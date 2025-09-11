@@ -1,0 +1,22 @@
+{
+  "welcome": "Welcome to Telemedicine!",
+  "login": "Login",
+  "register": "Register",
+  "patientDashboard": "Patient Dashboard",
+  "doctorDashboard": "Doctor Dashboard",
+  "pharmacistDashboard": "Pharmacist Dashboard",
+  "adminDashboard": "Admin Dashboard",
+  "bookAppointment": "Book New Appointment",
+  "symptomChecker": "AI Symptom Checker",
+  "medicalHistory": "View Medical History",
+  "pharmacyLocator": "Pharmacy Locator",
+  "available": "Available",
+  "notAvailable": "Not Available",
+  "pendingAppointments": "Pending Appointment Requests",
+  "todaysAppointments": "Today's Confirmed Appointments",
+  "approve": "Approve",
+  "reject": "Reject",
+  "startConsultation": "Start Consultation",
+  "yourAvailability": "Your Availability",
+  "language": "Language"
+}

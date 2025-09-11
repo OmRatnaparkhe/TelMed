@@ -1,0 +1,134 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  PATIENT
+  DOCTOR
+  PHARMACIST
+  ADMIN
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+enum StockStatus {
+  IN_STOCK
+  LOW_STOCK
+  OUT_OF_STOCK
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  role      Role
+  firstName String
+  lastName  String
+  phone     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  patientProfile PatientProfile?
+  doctorProfile  DoctorProfile?
+}
+
+model PatientProfile {
+  id               String   @id @default(uuid())
+  userId           String   @unique
+  dob              DateTime
+  gender           String
+  address          String
+  bloodGroup       String
+  emergencyContact String
+
+  user User @relation(fields: [userId], references: [id])
+
+  appointments Appointment[] @relation("PatientAppointments")
+  medicalRecords MedicalRecord[]
+}
+
+model DoctorProfile {
+  id              String       @id @default(uuid())
+  userId          String       @unique
+  specialization  String
+  qualifications  String
+  experienceYears Int
+  isAvailable     Boolean      @default(true)
+
+  user User @relation(fields: [userId], references: [id])
+
+  appointments  Appointment[] @relation("DoctorAppointments")
+  medicalRecords MedicalRecord[]
+  managedPharmacies Pharmacy[] // Renamed from 'pharmacies' for clarity, assuming a pharmacist manages these
+}
+
+model Appointment {
+  id              String            @id @default(uuid())
+  patientId       String
+  doctorId        String
+  appointmentTime DateTime
+  status          AppointmentStatus @default(PENDING)
+  symptoms        String
+  consultationNotes String?
+
+  patient PatientProfile @relation("PatientAppointments", fields: [patientId], references: [id])
+  doctor  DoctorProfile  @relation("DoctorAppointments", fields: [doctorId], references: [id])
+  medicalRecords MedicalRecord[]
+}
+
+model MedicalRecord {
+  id            String   @id @default(uuid())
+  patientId     String
+  doctorId      String
+  appointmentId String
+  diagnosis     String
+  prescription  String
+  createdAt     DateTime @default(now())
+
+  patient     PatientProfile @relation(fields: [patientId], references: [id])
+  doctor      DoctorProfile  @relation(fields: [doctorId], references: [id])
+  appointment Appointment    @relation(fields: [appointmentId], references: [id])
+}
+
+model Pharmacy {
+  id        String   @id @default(uuid())
+  name      String
+  address   String
+  latitude  Float
+  longitude Float
+  pharmacistId String // Foreign key
+
+  pharmacist DoctorProfile @relation(fields: [pharmacistId], references: [id])
+  stocks     PharmacyStock[]
+}
+
+model Medicine {
+  id          String   @id @default(uuid())
+  name        String
+  genericName String
+
+  stocks PharmacyStock[]
+}
+
+model PharmacyStock {
+  id          String      @id @default(uuid())
+  pharmacyId  String
+  medicineId  String
+  stockStatus StockStatus
+
+  pharmacy Pharmacy @relation(fields: [pharmacyId], references: [id])
+  medicine Medicine @relation(fields: [medicineId], references: [id])
+
+  @@unique([pharmacyId, medicineId])
+}
+

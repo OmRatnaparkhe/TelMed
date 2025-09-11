@@ -1,0 +1,22 @@
+{
+  "welcome": "Telemedicine ਵਿੱਚ ਤੁਹਾਡਾ ਸੁਆਗਤ ਹੈ!",
+  "login": "ਲਾਗਇਨ",
+  "register": "ਰਜਿਸਟਰ",
+  "patientDashboard": "ਮਰੀਜ਼ ਡੈਸ਼ਬੋਰਡ",
+  "doctorDashboard": "ਡਾਕਟਰ ਡੈਸ਼ਬੋਰਡ",
+  "pharmacistDashboard": "ਫਾਰਮਾਸਿਸਟ ਡੈਸ਼ਬੋਰਡ",
+  "adminDashboard": "ਐਡਮਿਨ ਡੈਸ਼ਬੋਰਡ",
+  "bookAppointment": "ਨਵੀਂ ਮੁਲਾਕਾਤ ਬੁੱਕ ਕਰੋ",
+  "symptomChecker": "AI ਲੱਛਣ ਜਾਂਚਕਰਤਾ",
+  "medicalHistory": "ਮੈਡੀਕਲ ਇਤਿਹਾਸ ਦੇਖੋ",
+  "pharmacyLocator": "ਫਾਰਮੇਸੀ ਲੋਕੇਟਰ",
+  "available": "ਉਪਲਬਧ",
+  "notAvailable": "ਉਪਲਬਧ ਨਹੀਂ",
+  "pendingAppointments": "ਬਕਾਇਆ ਮੁਲਾਕਾਤ ਦੀਆਂ ਬੇਨਤੀਆਂ",
+  "todaysAppointments": "ਅੱਜ ਦੀਆਂ ਪੁਸ਼ਟੀ ਕੀਤੀਆਂ ਮੁਲਾਕਾਤਾਂ",
+  "approve": "ਮਨਜ਼ੂਰ ਕਰੋ",
+  "reject": "ਰੱਦ ਕਰੋ",
+  "startConsultation": "ਸਲਾਹ-ਮਸ਼ਵਰਾ ਸ਼ੁਰੂ ਕਰੋ",
+  "yourAvailability": "ਤੁਹਾਡੀ ਉਪਲਬਧਤਾ",
+  "language": "ਭਾਸ਼ਾ"
+}
