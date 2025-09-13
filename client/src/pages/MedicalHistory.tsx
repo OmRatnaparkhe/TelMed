@@ -34,9 +34,7 @@ const MedicalHistory: React.FC = () => {
           setLoading(false);
         }
 
-        const response = await api.get('http://localhost:4000/api/medical-records/me', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const response = await api.get('/api/medical-records/me');
         setMedicalRecords(response.data);
         localStorage.setItem('medicalRecords', JSON.stringify(response.data));
       } catch (err: any) {

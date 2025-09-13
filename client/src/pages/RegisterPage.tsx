@@ -33,7 +33,7 @@ const RegisterPage: React.FC = () => {
     e.preventDefault();
     setError(null);
     try {
-      await api.post('http://localhost:4000/api/auth/register', formData);
+      await api.post('/api/auth/register', formData);
       alert('Registration successful! Please log in.');
       navigate('/login');
     } catch (err: any) {
@@ -51,7 +51,7 @@ const RegisterPage: React.FC = () => {
           <div className="rounded-md shadow-sm space-y-4 ml-28">
             {/* Basic User Fields */}
             <div>
-              <input  name="email" type="email" required className="auth-input p-1" placeholder="Email address" value={formData.email} onChange={handleChange} />
+              <input name="email" type="email" required className="auth-input p-1" placeholder="Email address" value={formData.email} onChange={handleChange} />
             </div>
             <div>
               <input name="password" type="password" required className="auth-input p-1" placeholder="Password" value={formData.password} onChange={handleChange} />

@@ -37,7 +37,7 @@ const PharmacyLocator: React.FC = () => {
   useEffect(() => {
     const fetchPharmacies = async () => {
       try {
-        const response = await api.get<Pharmacy[]>('http://localhost:4000/api/pharmacies');
+        const response = await api.get<Pharmacy[]>('/api/pharmacies');
         setPharmacies(response.data);
       } catch (err: any) {
         setError(err.response?.data?.error || 'Failed to fetch pharmacies');
@@ -64,9 +64,7 @@ const PharmacyLocator: React.FC = () => {
         setLoading(false);
         return;
       }
-      const response = await api.get<PharmacyStock[]>(`http://localhost:4000/api/pharmacy/stock?medicineName=${searchTerm}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await api.get<PharmacyStock[]>(`/api/pharmacy/stock?medicineName=${searchTerm}`);
       const pharmaciesWithStock = response.data.map((stock) => stock.id); // This will need adjustment: we need pharmacyId from stock
 
       // To correctly highlight pharmacies, we need to ensure the backend /api/pharmacy/stock endpoint
@@ -75,7 +73,7 @@ const PharmacyLocator: React.FC = () => {
       // A more robust backend would return `pharmacyId` in the stock items or a separate endpoint.
       // For now, let's assume the response directly gives us the IDs of pharmacies that have the stock.
       // (This is a placeholder and needs refinement based on actual backend /api/pharmacy/stock response)
-      
+
       // For the MVP, I'm adjusting the interpretation: let's assume the backend will return
       // an array of Pharmacy objects that have the medicine in stock.
 
@@ -83,7 +81,7 @@ const PharmacyLocator: React.FC = () => {
       // If `response.data` for `/api/pharmacy/stock` returns an array of Pharmacy objects
       // that have the medicine, then the following would work:
       // setHighlightedPharmacies(response.data.map(p => p.id));
-      
+
       // Given the current backend `getPharmacyStock` returns PharmacyStock, we need to map those
       // back to Pharmacy IDs. This requires the backend response to include `pharmacyId` for each stock item.
       const pharmacyIdsWithStock = response.data.map(stockItem => (
