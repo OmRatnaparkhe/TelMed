@@ -3,7 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import { register, login, getMe } from "./auth/auth.controller.js";
 import { authenticateToken } from "./auth/auth.middleware.js";
-import { getMyAppointments, createAppointment, getPendingAppointments, approveAppointment, rejectAppointment, completeAppointment } from "./appointments/appointments.controller.js";
+import { getMyAppointments, createAppointment, getPendingAppointments, approveAppointment, rejectAppointment, completeAppointment, getTodaysConfirmedAppointmentsForDoctor } from "./appointments/appointments.controller.js";
 import { getAvailableDoctors, updateMyAvailabilityStatus } from "./doctors/doctors.controller.js";
 import { getMyMedicalRecords, createMedicalRecord } from "./medicalRecords/medicalRecords.controller.js";
 import { checkSymptoms } from "./symptoms/symptoms.controller.js";
@@ -47,6 +47,7 @@ app.post("/api/symptoms/check", authenticateToken, checkSymptoms);
 
 // Protected Doctor Routes
 app.get("/api/appointments/pending", authenticateToken, getPendingAppointments);
+app.get("/api/appointments/today-confirmed", authenticateToken, getTodaysConfirmedAppointmentsForDoctor);
 app.put("/api/appointments/:id/approve", authenticateToken, approveAppointment);
 app.put("/api/appointments/:id/reject", authenticateToken, rejectAppointment);
 app.put("/api/appointments/:id/complete", authenticateToken, completeAppointment);

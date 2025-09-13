@@ -12,10 +12,10 @@ const LoginPage: React.FC = () => {
     e.preventDefault();
     setError(null);
     try {
-      const response = await api.post('http://localhost:4000/api/auth/login', { email, password });
+      const response = await api.post('/api/auth/login', { email, password });
       localStorage.setItem('token', response.data.token);
       // Redirect to dashboard or home page
-      const role = response.data.Role;
+      const role = response.data.role;
       console.log(role);
       window.location.href = `/${role}`;
       navigate(`/${role}`);

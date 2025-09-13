@@ -25,9 +25,7 @@ const SymptomChecker: React.FC = () => {
         navigate('/login');
         return;
       }
-      const response = await api.post('http://localhost:4000/api/symptoms/check', { symptoms }, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await api.post('/api/symptoms/check', { symptoms });
       setResults(response.data);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to check symptoms');
