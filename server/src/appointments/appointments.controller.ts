@@ -156,6 +156,45 @@ export const getTodaysConfirmedAppointmentsForDoctor = async (req: AuthRequest, 
   }
 };
 
+export const getAppointmentHistoryForDoctor = async (req: AuthRequest, res: Response) => {
+  if (!req.userId || req.userRole !== Role.DOCTOR) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+
+  const { status, limit } = req.query as { status?: AppointmentStatus; limit?: string };
+  const take = Math.min(parseInt(limit || '20', 10) || 20, 100);
+
+  try {
+    const doctorProfile = await prisma.doctorProfile.findUnique({
+      where: { userId: req.userId },
+      select: { id: true },
+    });
+
+    if (!doctorProfile) {
+      return res.status(404).json({ error: 'Doctor profile not found' });
+    }
+
+    const whereClause: any = { doctorId: doctorProfile.id };
+    if (status && Object.values(AppointmentStatus).includes(status)) {
+      whereClause.status = status;
+    }
+
+    const history = await prisma.appointment.findMany({
+      where: whereClause,
+      include: {
+        patient: { select: { user: { select: { firstName: true, lastName: true, phone: true, email: true } } } },
+      },
+      orderBy: { appointmentTime: 'desc' },
+      take,
+    });
+
+    res.json(history);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error fetching appointment history' });
+  }
+};
+
 export const approveAppointment = async (req: AuthRequest, res: Response) => {
   if (!req.userId || req.userRole !== Role.DOCTOR) {
     return res.status(403).json({ error: 'Access denied' });
