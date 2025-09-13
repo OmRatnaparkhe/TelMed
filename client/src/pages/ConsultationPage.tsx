@@ -33,9 +33,7 @@ const ConsultationPage: React.FC = () => {
           return;
         }
         // This assumes a backend endpoint like GET /api/appointments/:id for doctors
-        const response = await api.get(`http://localhost:4000/api/appointments/${appointmentId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const response = await api.get(`/api/appointments/${appointmentId}`);
         setAppointment(response.data);
       } catch (err: any) {
         setError(err.response?.data?.error || 'Failed to fetch appointment details');
@@ -60,24 +58,16 @@ const ConsultationPage: React.FC = () => {
     try {
       const token = localStorage.getItem('token');
       // Create medical record
-      await api.post(
-        'http://localhost:4000/api/medical-records',
-        {
-          patientId: appointment.patient.user.id, // Assuming patient user object has ID
-          doctorId: 'replace_with_actual_doctor_id', // This will be handled by backend middleware or current user context
-          appointmentId: appointment.id,
-          diagnosis,
-          prescription,
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await api.post('/api/medical-records', {
+        patientId: appointment.patient.user.id, // Assuming patient user object has ID
+        doctorId: 'replace_with_actual_doctor_id', // This will be handled by backend middleware or current user context
+        appointmentId: appointment.id,
+        diagnosis,
+        prescription,
+      });
 
       // Update appointment status to completed
-      await api.put(
-        `http://localhost:4000/api/appointments/${appointment.id}/complete`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await api.put(`/api/appointments/${appointment.id}/complete`);
 
       alert('Consultation completed and medical record saved!');
       navigate('/doctor'); // Redirect back to doctor dashboard

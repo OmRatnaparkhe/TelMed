@@ -29,36 +29,17 @@ const DoctorDashboard: React.FC = () => {
       }
 
       // Fetch pending appointments
-      const pendingRes = await api.get('http://localhost:4000/api/appointments/pending', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const pendingRes = await api.get('/api/appointments/pending');
       setPendingAppointments(pendingRes.data);
 
       // For today's confirmed appointments, we'd ideally have a separate endpoint or filter more robustly.
       // For now, let's assume a simple filter on all confirmed for today.
       // This part might need refinement depending on backend capabilities.
-      const allAppointmentsRes = await api.get('http://localhost:4000/api/appointments/my-appointments', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
+      const todaysConfirmedRes = await api.get('/api/appointments/today-confirmed');
+      setTodaysAppointments(todaysConfirmedRes.data);
 
-      const confirmedToday = allAppointmentsRes.data.filter((apt: Appointment) => {
-        const aptDate = new Date(apt.appointmentTime);
-        return apt.status === 'CONFIRMED' && aptDate >= today && aptDate < tomorrow;
-      });
-      setTodaysAppointments(confirmedToday);
-
-      // Fetch doctor's availability status
-      const meRes = await api.get('http://localhost:4000/api/auth/me', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const doctorProfile = await api.get(`http://localhost:4000/api/doctors/${meRes.data.id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      }); // Assuming an endpoint to get doctor profile by user ID
-      setIsAvailable(doctorProfile.data.isAvailable);
+      // Set default availability (could be replaced with an endpoint in future)
+      setIsAvailable(true);
 
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to fetch data');
@@ -75,10 +56,7 @@ const DoctorDashboard: React.FC = () => {
   const handleStatusToggle = async () => {
     const newStatus = !isAvailable;
     try {
-      const token = localStorage.getItem('token');
-      await api.put('http://localhost:4000/api/doctors/me/status', { isAvailable: newStatus }, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await api.put('/api/doctors/me/status', { isAvailable: newStatus });
       setIsAvailable(newStatus);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to update availability');
@@ -88,10 +66,7 @@ const DoctorDashboard: React.FC = () => {
 
   const handleAppointmentAction = async (appointmentId: string, action: 'approve' | 'reject') => {
     try {
-      const token = localStorage.getItem('token');
-      await api.put(`http://localhost:4000/api/appointments/${appointmentId}/${action}`, {}, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await api.put(`/api/appointments/${appointmentId}/${action}`);
       alert(`Appointment ${action}d successfully!`);
       fetchAppointmentsAndStatus(); // Refresh data
     } catch (err: any) {
