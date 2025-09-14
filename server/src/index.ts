@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import { register, login, getMe } from "./auth/auth.controller.js";
 import { authenticateToken } from "./auth/auth.middleware.js";
 import { getMyAppointments, createAppointment, getPendingAppointments, approveAppointment, rejectAppointment, completeAppointment, getTodaysConfirmedAppointmentsForDoctor, getAppointmentHistoryForDoctor } from "./appointments/appointments.controller.js";
-import { getAvailableDoctors, updateMyAvailabilityStatus } from "./doctors/doctors.controller.js";
+import { getAvailableDoctors, updateMyAvailabilityStatus, getMyDoctorProfile } from "./doctors/doctors.controller.js";
 import { getMyMedicalRecords, createMedicalRecord } from "./medicalRecords/medicalRecords.controller.js";
 import { checkSymptoms } from "./symptoms/symptoms.controller.js";
 import { getPharmacies, getPharmacyStock, updateStockStatus } from "./pharmacy/pharmacy.controller.js"; // Import pharmacy controllers
@@ -42,6 +42,7 @@ app.get("/api/auth/me", authenticateToken, getMe);
 app.get("/api/appointments/my-appointments", authenticateToken, getMyAppointments);
 app.post("/api/appointments", authenticateToken, createAppointment);
 app.get("/api/doctors", authenticateToken, getAvailableDoctors);
+app.get("/api/doctors/me", authenticateToken, getMyDoctorProfile);
 app.get("/api/medical-records/me", authenticateToken, getMyMedicalRecords);
 app.post("/api/symptoms/check", authenticateToken, checkSymptoms);
 

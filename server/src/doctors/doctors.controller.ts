@@ -31,6 +31,35 @@ export const getAvailableDoctors = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// Get the authenticated doctor's profile (availability and basic info)
+export const getMyDoctorProfile = async (req: AuthRequest, res: Response) => {
+  if (!req.userId || req.userRole !== Role.DOCTOR) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+
+  try {
+    const profile = await prisma.doctorProfile.findUnique({
+      where: { userId: req.userId },
+      select: {
+        isAvailable: true,
+        specialization: true,
+        experienceYears: true,
+        qualifications: true,
+        user: { select: { id: true, firstName: true, lastName: true, email: true } },
+      },
+    });
+
+    if (!profile) {
+      return res.status(404).json({ error: 'Doctor profile not found' });
+    }
+
+    res.json(profile);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error fetching doctor profile' });
+  }
+};
+
 export const updateMyAvailabilityStatus = async (req: AuthRequest, res: Response) => {
   if (!req.userId || req.userRole !== Role.DOCTOR) {
     return res.status(403).json({ error: 'Access denied' });

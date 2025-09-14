@@ -14,19 +14,21 @@ import ConsultationPage from './pages/ConsultationPage';
 import PharmacyLocator from './pages/PharmacyLocator';
 import { I18nextProvider } from 'react-i18next';
 import i18n from './i18n';
+import LandingPage from './pages/LandingPage';
 
 function App() {
   return (
     <I18nextProvider i18n={i18n}>
       <BrowserRouter>
         <Routes>
+          {/* Public routes */}
+          <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
           {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>
-            <Route path="/" element={<div>Home - Protected</div>} />
             <Route path="/patient" element={<PatientDashboard />} />
             <Route path="/book-appointment" element={<BookAppointment />} />
             <Route path="/symptom-checker" element={<SymptomChecker />} />
