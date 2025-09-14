@@ -1,5 +1,7 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["windows", "native"]
+  engineType    = "binary"
 }
 
 datasource db {
@@ -25,6 +27,11 @@ enum StockStatus {
   IN_STOCK
   LOW_STOCK
   OUT_OF_STOCK
+}
+
+enum PrescriptionStatus {
+  PENDING
+  DISPENSED
 }
 
 model User {
@@ -53,36 +60,39 @@ model PatientProfile {
 
   user User @relation(fields: [userId], references: [id])
 
-  appointments Appointment[] @relation("PatientAppointments")
+  appointments   Appointment[]    @relation("PatientAppointments")
   medicalRecords MedicalRecord[]
+  Prescription   Prescription[]
+  RefillReminder RefillReminder[]
 }
 
 model DoctorProfile {
-  id              String       @id @default(uuid())
-  userId          String       @unique
+  id              String  @id @default(uuid())
+  userId          String  @unique
   specialization  String
   qualifications  String
   experienceYears Int
-  isAvailable     Boolean      @default(true)
+  isAvailable     Boolean @default(true)
 
   user User @relation(fields: [userId], references: [id])
 
-  appointments  Appointment[] @relation("DoctorAppointments")
-  medicalRecords MedicalRecord[]
+  appointments      Appointment[]   @relation("DoctorAppointments")
+  medicalRecords    MedicalRecord[]
   managedPharmacies Pharmacy[] // Renamed from 'pharmacies' for clarity, assuming a pharmacist manages these
+  Prescription      Prescription[]
 }
 
 model Appointment {
-  id              String            @id @default(uuid())
-  patientId       String
-  doctorId        String
-  appointmentTime DateTime
-  status          AppointmentStatus @default(PENDING)
-  symptoms        String
+  id                String            @id @default(uuid())
+  patientId         String
+  doctorId          String
+  appointmentTime   DateTime
+  status            AppointmentStatus @default(PENDING)
+  symptoms          String
   consultationNotes String?
 
-  patient PatientProfile @relation("PatientAppointments", fields: [patientId], references: [id])
-  doctor  DoctorProfile  @relation("DoctorAppointments", fields: [doctorId], references: [id])
+  patient        PatientProfile  @relation("PatientAppointments", fields: [patientId], references: [id])
+  doctor         DoctorProfile   @relation("DoctorAppointments", fields: [doctorId], references: [id])
   medicalRecords MedicalRecord[]
 }
 
@@ -101,23 +111,27 @@ model MedicalRecord {
 }
 
 model Pharmacy {
-  id        String   @id @default(uuid())
-  name      String
-  address   String
-  latitude  Float
-  longitude Float
+  id           String @id @default(uuid())
+  name         String
+  address      String
+  latitude     Float
+  longitude    Float
   pharmacistId String // Foreign key
 
-  pharmacist DoctorProfile @relation(fields: [pharmacistId], references: [id])
-  stocks     PharmacyStock[]
+  pharmacist    DoctorProfile   @relation(fields: [pharmacistId], references: [id])
+  stocks        PharmacyStock[]
+  MedicineBatch MedicineBatch[]
 }
 
 model Medicine {
-  id          String   @id @default(uuid())
+  id          String @id @default(uuid())
   name        String
   genericName String
 
-  stocks PharmacyStock[]
+  stocks           PharmacyStock[]
+  MedicineBatch    MedicineBatch[]
+  PrescriptionItem PrescriptionItem[]
+  RefillReminder   RefillReminder[]
 }
 
 model PharmacyStock {
@@ -132,3 +146,75 @@ model PharmacyStock {
   @@unique([pharmacyId, medicineId])
 }
 
+// Track inventory by batches with expiry and quantities
+model MedicineBatch {
+  id          String   @id @default(uuid())
+  pharmacyId  String
+  medicineId  String
+  batchNumber String
+  quantity    Int
+  expiryDate  DateTime
+
+  pharmacy Pharmacy @relation(fields: [pharmacyId], references: [id])
+  medicine Medicine @relation(fields: [medicineId], references: [id])
+}
+
+// E-prescriptions created by doctors for patients
+model Prescription {
+  id        String             @id @default(uuid())
+  patientId String
+  doctorId  String
+  status    PrescriptionStatus @default(PENDING)
+  createdAt DateTime           @default(now())
+
+  patient PatientProfile     @relation(fields: [patientId], references: [id])
+  doctor  DoctorProfile      @relation(fields: [doctorId], references: [id])
+  items   PrescriptionItem[]
+}
+
+model PrescriptionItem {
+  id             String  @id @default(uuid())
+  prescriptionId String
+  medicineId     String
+  quantity       Int
+  instructions   String?
+  genericAllowed Boolean @default(true)
+
+  prescription       Prescription        @relation(fields: [prescriptionId], references: [id])
+  medicine           Medicine            @relation(fields: [medicineId], references: [id])
+  dosageInstructions DosageInstruction[]
+}
+
+// Multilingual dosage text per prescription item
+model DosageInstruction {
+  id                 String @id @default(uuid())
+  prescriptionItemId String
+  languageCode       String
+  text               String
+
+  prescriptionItem PrescriptionItem @relation(fields: [prescriptionItemId], references: [id])
+}
+
+// Refill reminders configured for chronic patients
+model RefillReminder {
+  id         String    @id @default(uuid())
+  patientId  String
+  medicineId String
+  schedule   String // cron-like or human readable schedule
+  nextRunAt  DateTime?
+  active     Boolean   @default(true)
+
+  patient  PatientProfile @relation(fields: [patientId], references: [id])
+  medicine Medicine       @relation(fields: [medicineId], references: [id])
+}
+
+// Generic notification entity for in-app alerts
+model Notification {
+  id           String    @id @default(uuid())
+  type         String
+  payload      Json
+  targetUserId String?
+  targetRole   Role?
+  createdAt    DateTime  @default(now())
+  readAt       DateTime?
+}

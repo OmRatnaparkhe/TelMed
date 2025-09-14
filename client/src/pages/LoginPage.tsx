@@ -14,11 +14,10 @@ const LoginPage: React.FC = () => {
     try {
       const response = await api.post('/api/auth/login', { email, password });
       localStorage.setItem('token', response.data.token);
-      // Redirect to dashboard or home page
-      const role = response.data.role;
-      console.log(role);
-      window.location.href = `/${role}`;
-      navigate(`/${role}`);
+      // Redirect to role dashboard (lowercase path)
+      const role: string = response.data.role;
+      const path = `/${String(role).toLowerCase()}`;
+      navigate(path, { replace: true });
     } catch (err: any) {
       setError(err.response?.data?.error || 'Login failed');
     }
