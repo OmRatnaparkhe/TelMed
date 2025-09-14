@@ -44,6 +44,16 @@ const DoctorDashboard: React.FC = () => {
       const userRes = await api.get('/api/auth/me');
       setUser(userRes.data);
 
+      // Fetch current doctor's availability
+      try {
+        const profileRes = await api.get('/api/doctors/me');
+        if (typeof profileRes.data?.isAvailable === 'boolean') {
+          setIsAvailable(profileRes.data.isAvailable);
+        }
+      } catch (e) {
+        // ignore profile fetch error, leave default
+      }
+
       // Fetch pending appointments
       const pendingRes = await api.get('/api/appointments/pending');
       setPendingAppointments(pendingRes.data);
@@ -56,9 +66,6 @@ const DoctorDashboard: React.FC = () => {
 
       // Initial fetch for appointment history with default filters
       await fetchHistory();
-
-      // Set default availability (could be replaced with an endpoint in future)
-      setIsAvailable(true);
 
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to fetch data');
