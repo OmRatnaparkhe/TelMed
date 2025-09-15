@@ -174,7 +174,7 @@ const LocationSetup: React.FC = () => {
         }));
         setIsLoading(false);
         setSuccessMessage('Current location detected successfully!');
-        setTimeout(() => setSuccessMessage(null), 3000);
+        setTimeout(() => setSuccessMessage(null), 1000);
       },
       (error) => {
         setIsLoading(false);
@@ -219,7 +219,7 @@ const LocationSetup: React.FC = () => {
         }));
         setIsLoading(false);
         setSuccessMessage('Location coordinates updated successfully!');
-        setTimeout(() => setSuccessMessage(null), 3000);
+        setTimeout(() => setSuccessMessage(null), 1000);
       }, 1000);
     } catch (error) {
       setIsLoading(false);
@@ -239,7 +239,7 @@ const LocationSetup: React.FC = () => {
       localStorage.setItem('pharmacyLocation', JSON.stringify(pharmacyData));
       setSuccessMessage('Pharmacy location updated successfully!');
       setIsLoading(false);
-      setTimeout(() => setSuccessMessage(null), 3000);
+      setTimeout(() => setSuccessMessage(null), 1000);
     }, 1000);
   };
 

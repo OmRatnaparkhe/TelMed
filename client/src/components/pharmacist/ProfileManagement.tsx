@@ -171,7 +171,7 @@ const ProfileManagement: React.FC = () => {
 
       setSuccessMessage('Profile updated successfully!');
       setIsEditing(false);
-      setTimeout(() => setSuccessMessage(null), 3000);
+      setTimeout(() => setSuccessMessage(null), 1000);
     } catch (error) {
       console.error('Error updating profile:', error);
       setErrors({ general: 'Failed to update profile. Please try again.' });
