@@ -256,39 +256,48 @@ const RegisterPage: React.FC = () => {
                 onChange={handleChange}
               />
             </div>
+<div>
+  <select name="role" className="auth-input p-1" value={formData.role} onChange={handleChange}>
+    <option value="PATIENT">Patient</option>
+    <option value="DOCTOR">Doctor</option>
+    <option value="PHARMACIST">Pharmacist</option>
+  </select>
+</div>
 
-            <InputField
-              label="Email Address"
-              name="email"
-              type="email"
-              placeholder="Enter your email address"
-              required
-              formData={formData}
-              errors={errors}
-              onChange={handleChange}
-            />
+<InputField
+  label="Email Address"
+  name="email"
+  type="email"
+  placeholder="Enter your email address"
+  required
+  formData={formData}
+  errors={errors}
+  onChange={handleChange}
+/>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <InputField
-                label="Password"
-                name="password"
-                type="password"
-                placeholder="Create a strong password"
-                required
-                formData={formData}
-                errors={errors}
-                onChange={handleChange}
-              />
-              <InputField
-                label="Confirm Password"
-                name="confirmPassword"
-                type="password"
-                placeholder="Confirm your password"
-                required
-                formData={formData}
-                errors={errors}
-                onChange={handleChange}
-              />
+<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+  <InputField
+    label="Password"
+    name="password"
+    type="password"
+    placeholder="Create a strong password"
+    required
+    formData={formData}
+    errors={errors}
+    onChange={handleChange}
+  />
+  <InputField
+    label="Confirm Password"
+    name="confirmPassword"
+    type="password"
+    placeholder="Confirm your password"
+    required
+    formData={formData}
+    errors={errors}
+    onChange={handleChange}
+  />
+</div>
+
             </div>
 
             <InputField

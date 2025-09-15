@@ -132,17 +132,20 @@ const LoginPage: React.FC = () => {
       });
       
       localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-      if (formData.rememberMe) {
-        localStorage.setItem('rememberMe', 'true');
-      }
-      
-      const role = response.data.role;
-      setSuccessMessage('Login successful! Redirecting...');
-      
-      setTimeout(() => {
-        navigate(`/${role}`);
-      }, 1500);
+localStorage.setItem('token', response.data.token);
+localStorage.setItem('user', JSON.stringify(response.data.user));
+
+if (formData.rememberMe) {
+  localStorage.setItem('rememberMe', 'true');
+}
+
+const role: string = response.data.role;
+setSuccessMessage('Login successful! Redirecting...');
+
+setTimeout(() => {
+  navigate(`/${String(role).toLowerCase()}`, { replace: true });
+}, 1500);
+
     } catch (err: any) {
       setErrors({ 
         general: err.response?.data?.error || 'Login failed. Please check your credentials.' 

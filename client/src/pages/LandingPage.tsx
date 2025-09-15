@@ -1,25 +1,8 @@
-import React, { useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { jwtDecode } from 'jwt-decode';
+import React from 'react';
+import { Link } from 'react-router-dom';
 
 const LandingPage: React.FC = () => {
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    // If a valid token exists, redirect to the user's role dashboard
-    const token = localStorage.getItem('token');
-    if (token) {
-      try {
-        const decoded: { role?: string; exp: number } = jwtDecode(token);
-        const currentTime = Date.now() / 1000;
-        if (decoded.exp > currentTime && decoded.role) {
-          navigate(`/${decoded.role}`, { replace: true });
-        }
-      } catch {
-        // ignore invalid token and show landing page
-      }
-    }
-  }, [navigate]);
+  // Visiting the landing page will no longer auto-redirect authenticated users.
 
   return (
     <div className="min-h-screen bg-gray-50">

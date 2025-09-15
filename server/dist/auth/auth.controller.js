@@ -40,6 +40,29 @@ export const register = async (req, res) => {
                 },
             });
         }
+        else if (role === Role.PHARMACIST) {
+            // NOTE: Schema uses DoctorProfile for pharmacist relationship (Pharmacy.pharmacist -> DoctorProfile)
+            // 1) Create a DoctorProfile entry for the pharmacist
+            const pharmacistProfile = await prisma.doctorProfile.create({
+                data: {
+                    userId: user.id,
+                    specialization: specialization || 'Pharmacist',
+                    qualifications: qualifications || 'Pharmacy',
+                    experienceYears: parseInt(experienceYears || '0'),
+                },
+            });
+            // 2) Auto-create a Pharmacy and assign to this pharmacist to avoid unassigned errors
+            const pharmacyName = `${firstName ?? 'New'} ${lastName ?? 'Pharmacist'} Pharmacy`;
+            await prisma.pharmacy.create({
+                data: {
+                    name: pharmacyName,
+                    address: address || 'N/A',
+                    latitude: 0,
+                    longitude: 0,
+                    pharmacistId: pharmacistProfile.id,
+                },
+            });
+        }
         res.status(201).json({ message: 'User registered successfully' });
     }
     catch (error) {
@@ -60,7 +83,7 @@ export const login = async (req, res) => {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
         const token = jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET, { expiresIn: '1h' });
-        res.json({ token });
+        res.json({ token, role: user.role });
     }
     catch (error) {
         console.error(error);
