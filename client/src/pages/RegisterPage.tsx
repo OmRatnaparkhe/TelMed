@@ -298,8 +298,6 @@ const RegisterPage: React.FC = () => {
   />
 </div>
 
-            </div>
-
             <InputField
               label="Phone Number"
               name="phone"
