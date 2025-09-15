@@ -6,6 +6,80 @@ interface FormErrors {
   [key: string]: string;
 }
 
+interface InputFieldProps {
+  label: string;
+  name: string;
+  type: string;
+  placeholder?: string;
+  required?: boolean;
+  options?: { value: string; label: string }[];
+  formData: any;
+  errors: FormErrors;
+  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
+}
+
+const InputField: React.FC<InputFieldProps> = ({ 
+  label, 
+  name, 
+  type, 
+  placeholder, 
+  required = false, 
+  options, 
+  formData, 
+  errors, 
+  onChange 
+}) => {
+  const isSelect = type === 'select';
+  const inputClasses = `mt-1 block w-full px-3 py-2 border ${
+    errors[name] ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500'
+  } rounded-md shadow-sm focus:outline-none focus:ring-1 sm:text-sm transition-colors`;
+
+  const getValue = () => {
+    const value = formData[name as keyof typeof formData];
+    return typeof value === 'string' ? value : String(value || '');
+  };
+
+  return (
+    <div>
+      <label htmlFor={name} className="block text-sm font-medium text-gray-700 mb-1">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+      {isSelect ? (
+        <select
+          id={name}
+          name={name}
+          value={getValue()}
+          onChange={onChange}
+          className={inputClasses}
+          required={required}
+        >
+          {options?.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <input
+          id={name}
+          name={name}
+          type={type}
+          placeholder={placeholder}
+          value={getValue()}
+          onChange={onChange}
+          className={inputClasses}
+          required={required}
+        />
+      )}
+      {errors[name] && (
+        <p className="mt-1 text-sm text-red-600" role="alert">
+          {errors[name]}
+        </p>
+      )}
+    </div>
+  );
+};
+
 const RegisterPage: React.FC = () => {
   const [formData, setFormData] = useState({
     email: '',
@@ -115,59 +189,6 @@ const RegisterPage: React.FC = () => {
     }
   };
 
-  const InputField: React.FC<{
-    label: string;
-    name: string;
-    type: string;
-    placeholder?: string;
-    required?: boolean;
-    options?: { value: string; label: string }[];
-  }> = ({ label, name, type, placeholder, required = false, options }) => {
-    const isSelect = type === 'select';
-    const inputClasses = `mt-1 block w-full px-3 py-2 border ${
-      errors[name] ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500'
-    } rounded-md shadow-sm focus:outline-none focus:ring-1 sm:text-sm transition-colors`;
-
-    return (
-      <div>
-        <label htmlFor={name} className="block text-sm font-medium text-gray-700 mb-1">
-          {label} {required && <span className="text-red-500">*</span>}
-        </label>
-        {isSelect ? (
-          <select
-            id={name}
-            name={name}
-            value={formData[name as keyof typeof formData]}
-            onChange={handleChange}
-            className={inputClasses}
-            required={required}
-          >
-            {options?.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <input
-            id={name}
-            name={name}
-            type={type}
-            placeholder={placeholder}
-            value={formData[name as keyof typeof formData]}
-            onChange={handleChange}
-            className={inputClasses}
-            required={required}
-          />
-        )}
-        {errors[name] && (
-          <p className="mt-1 text-sm text-red-600" role="alert">
-            {errors[name]}
-          </p>
-        )}
-      </div>
-    );
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
@@ -220,6 +241,9 @@ const RegisterPage: React.FC = () => {
                 type="text"
                 placeholder="Enter your first name"
                 required
+                formData={formData}
+                errors={errors}
+                onChange={handleChange}
               />
               <InputField
                 label="Last Name"
@@ -227,6 +251,9 @@ const RegisterPage: React.FC = () => {
                 type="text"
                 placeholder="Enter your last name"
                 required
+                formData={formData}
+                errors={errors}
+                onChange={handleChange}
               />
             </div>
 
@@ -236,6 +263,9 @@ const RegisterPage: React.FC = () => {
               type="email"
               placeholder="Enter your email address"
               required
+              formData={formData}
+              errors={errors}
+              onChange={handleChange}
             />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -245,6 +275,9 @@ const RegisterPage: React.FC = () => {
                 type="password"
                 placeholder="Create a strong password"
                 required
+                formData={formData}
+                errors={errors}
+                onChange={handleChange}
               />
               <InputField
                 label="Confirm Password"
@@ -252,6 +285,9 @@ const RegisterPage: React.FC = () => {
                 type="password"
                 placeholder="Confirm your password"
                 required
+                formData={formData}
+                errors={errors}
+                onChange={handleChange}
               />
             </div>
 
@@ -261,6 +297,9 @@ const RegisterPage: React.FC = () => {
               type="tel"
               placeholder="Enter your phone number"
               required
+              formData={formData}
+              errors={errors}
+              onChange={handleChange}
             />
 
             <InputField
@@ -268,6 +307,9 @@ const RegisterPage: React.FC = () => {
               name="role"
               type="select"
               required
+              formData={formData}
+              errors={errors}
+              onChange={handleChange}
               options={[
                 { value: 'PATIENT', label: 'Patient' },
                 { value: 'DOCTOR', label: 'Doctor' },
@@ -285,11 +327,17 @@ const RegisterPage: React.FC = () => {
                     label="Date of Birth"
                     name="dob"
                     type="date"
+                    formData={formData}
+                    errors={errors}
+                    onChange={handleChange}
                   />
                   <InputField
                     label="Gender"
                     name="gender"
                     type="select"
+                    formData={formData}
+                    errors={errors}
+                    onChange={handleChange}
                     options={[
                       { value: '', label: 'Select Gender' },
                       { value: 'MALE', label: 'Male' },
@@ -303,12 +351,18 @@ const RegisterPage: React.FC = () => {
                   name="address"
                   type="text"
                   placeholder="Enter your address"
+                  formData={formData}
+                  errors={errors}
+                  onChange={handleChange}
                 />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <InputField
                     label="Blood Group"
                     name="bloodGroup"
                     type="select"
+                    formData={formData}
+                    errors={errors}
+                    onChange={handleChange}
                     options={[
                       { value: '', label: 'Select Blood Group' },
                       { value: 'A+', label: 'A+' },
@@ -326,6 +380,9 @@ const RegisterPage: React.FC = () => {
                     name="emergencyContact"
                     type="tel"
                     placeholder="Emergency contact number"
+                    formData={formData}
+                    errors={errors}
+                    onChange={handleChange}
                   />
                 </div>
               </div>
@@ -341,6 +398,9 @@ const RegisterPage: React.FC = () => {
                   type="text"
                   placeholder="e.g., Cardiology, Pediatrics"
                   required
+                  formData={formData}
+                  errors={errors}
+                  onChange={handleChange}
                 />
                 <InputField
                   label="Qualifications"
@@ -348,6 +408,9 @@ const RegisterPage: React.FC = () => {
                   type="text"
                   placeholder="e.g., MBBS, MD"
                   required
+                  formData={formData}
+                  errors={errors}
+                  onChange={handleChange}
                 />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <InputField
@@ -356,12 +419,18 @@ const RegisterPage: React.FC = () => {
                     type="text"
                     placeholder="Medical license number"
                     required
+                    formData={formData}
+                    errors={errors}
+                    onChange={handleChange}
                   />
                   <InputField
                     label="Years of Experience"
                     name="experienceYears"
                     type="number"
                     placeholder="Years of practice"
+                    formData={formData}
+                    errors={errors}
+                    onChange={handleChange}
                   />
                 </div>
               </div>

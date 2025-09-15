@@ -12,6 +12,63 @@ interface FormData {
   rememberMe: boolean;
 }
 
+interface InputFieldProps {
+  label: string;
+  name: string;
+  type: string;
+  placeholder?: string;
+  required?: boolean;
+  autoComplete?: string;
+  formData: FormData;
+  errors: FormErrors;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}
+
+const InputField: React.FC<InputFieldProps> = ({ 
+  label, 
+  name, 
+  type, 
+  placeholder, 
+  required = false, 
+  autoComplete, 
+  formData, 
+  errors, 
+  onChange 
+}) => {
+  const inputClasses = `mt-1 block w-full px-3 py-2 border ${
+    errors[name] ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500'
+  } rounded-md shadow-sm focus:outline-none focus:ring-1 sm:text-sm transition-colors`;
+
+  const getValue = () => {
+    const value = formData[name as keyof FormData];
+    return typeof value === 'string' ? value : String(value || '');
+  };
+
+  return (
+    <div>
+      <label htmlFor={name} className="block text-sm font-medium text-gray-700 mb-1">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+      <input
+        id={name}
+        name={name}
+        type={type}
+        placeholder={placeholder}
+        value={getValue()}
+        onChange={onChange}
+        className={inputClasses}
+        required={required}
+        autoComplete={autoComplete}
+      />
+      {errors[name] && (
+        <p className="mt-1 text-sm text-red-600" role="alert">
+          {errors[name]}
+        </p>
+      )}
+    </div>
+  );
+};
+
 const LoginPage: React.FC = () => {
   const [formData, setFormData] = useState<FormData>({
     email: '',
@@ -94,42 +151,6 @@ const LoginPage: React.FC = () => {
     }
   };
 
-  const InputField: React.FC<{
-    label: string;
-    name: string;
-    type: string;
-    placeholder?: string;
-    required?: boolean;
-    autoComplete?: string;
-  }> = ({ label, name, type, placeholder, required = false, autoComplete }) => {
-    const inputClasses = `mt-1 block w-full px-3 py-2 border ${
-      errors[name] ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500'
-    } rounded-md shadow-sm focus:outline-none focus:ring-1 sm:text-sm transition-colors`;
-
-    return (
-      <div>
-        <label htmlFor={name} className="block text-sm font-medium text-gray-700 mb-1">
-          {label} {required && <span className="text-red-500">*</span>}
-        </label>
-        <input
-          id={name}
-          name={name}
-          type={type}
-          placeholder={placeholder}
-          value={formData[name as keyof FormData] as string}
-          onChange={handleChange}
-          className={inputClasses}
-          required={required}
-          autoComplete={autoComplete}
-        />
-        {errors[name] && (
-          <p className="mt-1 text-sm text-red-600" role="alert">
-            {errors[name]}
-          </p>
-        )}
-      </div>
-    );
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
@@ -186,6 +207,9 @@ const LoginPage: React.FC = () => {
               placeholder="Enter your email address"
               required
               autoComplete="email"
+              formData={formData}
+              errors={errors}
+              onChange={handleChange}
             />
 
             <InputField
@@ -195,6 +219,9 @@ const LoginPage: React.FC = () => {
               placeholder="Enter your password"
               required
               autoComplete="current-password"
+              formData={formData}
+              errors={errors}
+              onChange={handleChange}
             />
 
             {/* Remember Me & Forgot Password */}
