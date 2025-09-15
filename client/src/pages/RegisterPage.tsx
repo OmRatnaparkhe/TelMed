@@ -70,7 +70,6 @@ const RegisterPage: React.FC = () => {
                 <option value="PATIENT">Patient</option>
                 <option value="DOCTOR">Doctor</option>
                 <option value="PHARMACIST">Pharmacist</option>
-                <option value="ADMIN">Admin</option>
               </select>
             </div>
 
