@@ -1,13 +1,13 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import { register, login, getMe } from "./auth/auth.controller";
-import { authenticateToken } from "./auth/auth.middleware";
-import { getMyAppointments, createAppointment, getPendingAppointments, approveAppointment, rejectAppointment, completeAppointment } from "./appointments/appointments.controller";
-import { getAvailableDoctors, updateMyAvailabilityStatus } from "./doctors/doctors.controller";
-import { getMyMedicalRecords, createMedicalRecord } from "./medicalRecords/medicalRecords.controller";
-import { checkSymptoms } from "./symptoms/symptoms.controller";
-import { getPharmacies, getPharmacyStock, updateStockStatus } from "./pharmacy/pharmacy.controller"; // Import pharmacy controllers
+import { register, login, getMe } from "./auth/auth.controller.js";
+import { authenticateToken } from "./auth/auth.middleware.js";
+import { getMyAppointments, createAppointment, getPendingAppointments, approveAppointment, rejectAppointment, completeAppointment, getTodaysConfirmedAppointmentsForDoctor, getAppointmentHistoryForDoctor } from "./appointments/appointments.controller.js";
+import { getAvailableDoctors, updateMyAvailabilityStatus, getMyDoctorProfile } from "./doctors/doctors.controller.js";
+import { getMyMedicalRecords, createMedicalRecord } from "./medicalRecords/medicalRecords.controller.js";
+import { checkSymptoms } from "./symptoms/symptoms.controller.js";
+import { getPharmacies, getPharmacyStock, updateStockStatus, searchMedicineStock } from "./pharmacy/pharmacy.controller.js"; // Import pharmacy controllers
 dotenv.config();
 const app = express();
 app.use(express.json());
@@ -33,10 +33,13 @@ app.get("/api/auth/me", authenticateToken, getMe);
 app.get("/api/appointments/my-appointments", authenticateToken, getMyAppointments);
 app.post("/api/appointments", authenticateToken, createAppointment);
 app.get("/api/doctors", authenticateToken, getAvailableDoctors);
+app.get("/api/doctors/me", authenticateToken, getMyDoctorProfile);
 app.get("/api/medical-records/me", authenticateToken, getMyMedicalRecords);
 app.post("/api/symptoms/check", authenticateToken, checkSymptoms);
 // Protected Doctor Routes
 app.get("/api/appointments/pending", authenticateToken, getPendingAppointments);
+app.get("/api/appointments/today-confirmed", authenticateToken, getTodaysConfirmedAppointmentsForDoctor);
+app.get("/api/appointments/history", authenticateToken, getAppointmentHistoryForDoctor);
 app.put("/api/appointments/:id/approve", authenticateToken, approveAppointment);
 app.put("/api/appointments/:id/reject", authenticateToken, rejectAppointment);
 app.put("/api/appointments/:id/complete", authenticateToken, completeAppointment);
@@ -44,6 +47,7 @@ app.put("/api/doctors/me/status", authenticateToken, updateMyAvailabilityStatus)
 app.post("/api/medical-records", authenticateToken, createMedicalRecord);
 // Public Pharmacy Routes (for map, no auth needed to view)
 app.get("/api/pharmacies", getPharmacies);
+app.get("/api/pharmacies/search", searchMedicineStock); // Public medicine search
 // Protected Pharmacist Routes
 app.get("/api/pharmacy/stock", authenticateToken, getPharmacyStock); // Can be filtered by medicineName
 app.put("/api/pharmacy/stock/:stockId", authenticateToken, updateStockStatus);

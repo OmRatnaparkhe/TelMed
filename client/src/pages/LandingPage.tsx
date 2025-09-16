@@ -1,6 +1,9 @@
 import React, { useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Calendar, Activity, Video, FileText, Users, Shield, Clock, Heart } from 'lucide-react';
 
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
@@ -22,113 +25,235 @@ const LandingPage: React.FC = () => {
   }, [navigate]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded bg-indigo-600" />
-            <span className="text-xl font-extrabold text-gray-900">TelMed</span>
+    <div className="min-h-screen bg-gradient-to-br from-background via-blue-50/30 to-green-50/30">
+      {/* Header */}
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container flex h-16 items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+              <Heart className="h-5 w-5 text-primary-foreground" />
+            </div>
+            <span className="text-xl font-bold">TelMed</span>
           </div>
-          <nav className="flex items-center gap-3">
-            <Link to="/login" className="text-sm font-medium text-gray-700 hover:text-gray-900">Sign in</Link>
-            <Link to="/register" className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">Get Started</Link>
+          <nav className="flex items-center space-x-2">
+            <Button variant="ghost" asChild>
+              <Link to="/login">Sign in</Link>
+            </Button>
+            <Button asChild>
+              <Link to="/register">Get Started</Link>
+            </Button>
           </nav>
         </div>
       </header>
 
       <main>
-        {/* Hero */}
-        <section className="relative overflow-hidden">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 grid lg:grid-cols-2 gap-10 items-center">
-            <div>
-              <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-gray-900">
-                Your digital gateway to smarter healthcare
-              </h1>
-              <p className="mt-4 text-lg text-gray-600">
-                Book appointments, consult with doctors online, check symptoms, and manage medical history — all in one place.
-              </p>
-              <div className="mt-8 flex flex-wrap items-center gap-3">
-                <Link to="/register" className="inline-flex items-center rounded-md bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
-                  Create an account
-                </Link>
-                <Link to="/login" className="inline-flex items-center rounded-md border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50">
-                  Sign in
-                </Link>
+        {/* Hero Section */}
+        <section className="container py-24 md:py-32">
+          <div className="grid gap-12 lg:grid-cols-2 lg:gap-12 items-center">
+            <div className="space-y-8">
+              <div className="space-y-4">
+                <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl">
+                  Your Digital
+                  <span className="bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
+                    {" "}Healthcare
+                  </span>
+                  {" "}Gateway
+                </h1>
+                <p className="max-w-[600px] text-muted-foreground md:text-xl">
+                  Experience seamless healthcare with our comprehensive telemedicine platform. 
+                  Book appointments, consult doctors online, check symptoms, and manage your medical history.
+                </p>
+              </div>
+              <div className="flex flex-col gap-4 sm:flex-row">
+                <Button size="lg" asChild>
+                  <Link to="/register">Start Your Journey</Link>
+                </Button>
+                <Button variant="outline" size="lg" asChild>
+                  <Link to="/login">Sign In</Link>
+                </Button>
+              </div>
+              <div className="flex items-center space-x-8 text-sm text-muted-foreground">
+                <div className="flex items-center space-x-2">
+                  <Shield className="h-4 w-4" />
+                  <span>HIPAA Compliant</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Clock className="h-4 w-4" />
+                  <span>24/7 Available</span>
+                </div>
               </div>
             </div>
-            <div className="relative">
-              <div className="aspect-[4/3] w-full rounded-xl border bg-white shadow-sm grid grid-cols-2 gap-3 p-3">
-                <div className="rounded-lg bg-indigo-50 border border-indigo-100 p-4">
-                  <div className="text-sm font-semibold text-indigo-700">Book Appointment</div>
-                  <div className="mt-3 flex h-24 items-center justify-center rounded bg-white border">
-                    {/* Calendar icon */}
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" strokeWidth="1.5" className="h-12 w-12 stroke-indigo-600">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M8 2v3m8-3v3M3.5 9.5h17M5 6.5h14a2 2 0 0 1 2 2V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8.5a2 2 0 0 1 2-2h2Z" />
-                      <rect x="7" y="12" width="4" height="4" rx="1" className="fill-indigo-100 stroke-none" />
-                    </svg>
+            
+            {/* Feature Cards Grid */}
+            <div className="grid grid-cols-2 gap-4">
+              <Card className="border-2 hover:shadow-lg transition-shadow">
+                <CardHeader className="pb-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100">
+                    <Calendar className="h-6 w-6 text-blue-600" />
                   </div>
-                </div>
-                <div className="rounded-lg bg-emerald-50 border border-emerald-100 p-4">
-                  <div className="text-sm font-semibold text-emerald-700">Symptom Checker</div>
-                  <div className="mt-3 flex h-24 items-center justify-center rounded bg-white border">
-                    {/* Diagnostics icon */}
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" strokeWidth="1.5" className="h-12 w-12 stroke-emerald-600">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 12h3l2-4 3 8 2-4h4" />
-                      <rect x="3" y="4" width="18" height="16" rx="2" className="stroke-emerald-600" />
-                    </svg>
+                  <CardTitle className="text-lg">Book Appointments</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription>
+                    Schedule consultations with qualified healthcare professionals
+                  </CardDescription>
+                </CardContent>
+              </Card>
+              
+              <Card className="border-2 hover:shadow-lg transition-shadow">
+                <CardHeader className="pb-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-green-100">
+                    <Activity className="h-6 w-6 text-green-600" />
                   </div>
-                </div>
-                <div className="rounded-lg bg-amber-50 border border-amber-100 p-4">
-                  <div className="text-sm font-semibold text-amber-700">Consult Online</div>
-                  <div className="mt-3 flex h-24 items-center justify-center rounded bg-white border">
-                    {/* Video call icon */}
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" strokeWidth="1.5" className="h-12 w-12 stroke-amber-600">
-                      <rect x="3" y="5" width="14" height="14" rx="2" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M17 9l4-2v10l-4-2V9Z" />
-                    </svg>
+                  <CardTitle className="text-lg">Symptom Checker</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription>
+                    AI-powered symptom analysis for preliminary health insights
+                  </CardDescription>
+                </CardContent>
+              </Card>
+              
+              <Card className="border-2 hover:shadow-lg transition-shadow">
+                <CardHeader className="pb-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-purple-100">
+                    <Video className="h-6 w-6 text-purple-600" />
                   </div>
-                </div>
-                <div className="rounded-lg bg-sky-50 border border-sky-100 p-4">
-                  <div className="text-sm font-semibold text-sky-700">Medical History</div>
-                  <div className="mt-3 flex h-24 items-center justify-center rounded bg-white border">
-                    {/* Medical file icon */}
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" strokeWidth="1.5" className="h-12 w-12 stroke-sky-600">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M8 3h4l2 2h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h2Z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v6m-3-3h6" />
-                    </svg>
+                  <CardTitle className="text-lg">Online Consultations</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription>
+                    Secure video consultations from the comfort of your home
+                  </CardDescription>
+                </CardContent>
+              </Card>
+              
+              <Card className="border-2 hover:shadow-lg transition-shadow">
+                <CardHeader className="pb-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-orange-100">
+                    <FileText className="h-6 w-6 text-orange-600" />
                   </div>
-                </div>
-              </div>
+                  <CardTitle className="text-lg">Medical Records</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription>
+                    Centralized access to your complete medical history
+                  </CardDescription>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </section>
 
-        {/* Features */}
-        <section className="bg-white border-t">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 grid md:grid-cols-3 gap-6">
-            <div className="rounded-lg border p-6">
-              <div className="text-lg font-semibold text-gray-900">For Patients</div>
-              <p className="mt-2 text-sm text-gray-600">Find doctors, book appointments, and access consultations from home.</p>
+        {/* Features Section */}
+        <section className="border-t bg-muted/50 py-24">
+          <div className="container">
+            <div className="text-center space-y-4 mb-16">
+              <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
+                Healthcare for Everyone
+              </h2>
+              <p className="max-w-[900px] mx-auto text-muted-foreground md:text-xl">
+                Our platform serves all stakeholders in the healthcare ecosystem with specialized tools and features.
+              </p>
             </div>
-            <div className="rounded-lg border p-6">
-              <div className="text-lg font-semibold text-gray-900">For Doctors</div>
-              <p className="mt-2 text-sm text-gray-600">Manage appointments, consult online, and review patient history securely.</p>
+            
+            <div className="grid gap-8 md:grid-cols-3">
+              <Card className="text-center">
+                <CardHeader>
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-100">
+                    <Users className="h-8 w-8 text-blue-600" />
+                  </div>
+                  <CardTitle className="text-xl">For Patients</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription className="text-base">
+                    Find qualified doctors, book appointments instantly, and access consultations from anywhere. 
+                    Your health is just a click away.
+                  </CardDescription>
+                </CardContent>
+              </Card>
+              
+              <Card className="text-center">
+                <CardHeader>
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
+                    <Heart className="h-8 w-8 text-green-600" />
+                  </div>
+                  <CardTitle className="text-xl">For Doctors</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription className="text-base">
+                    Manage your practice efficiently with our comprehensive tools. 
+                    Conduct secure consultations and maintain detailed patient records.
+                  </CardDescription>
+                </CardContent>
+              </Card>
+              
+              <Card className="text-center">
+                <CardHeader>
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-purple-100">
+                    <Shield className="h-8 w-8 text-purple-600" />
+                  </div>
+                  <CardTitle className="text-xl">For Pharmacists</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription className="text-base">
+                    Verify prescriptions seamlessly and help patients locate nearby pharmacies. 
+                    Streamline medication management processes.
+                  </CardDescription>
+                </CardContent>
+              </Card>
             </div>
-            <div className="rounded-lg border p-6">
-              <div className="text-lg font-semibold text-gray-900">For Pharmacists</div>
-              <p className="mt-2 text-sm text-gray-600">Verify prescriptions and help patients locate nearby pharmacies.</p>
+          </div>
+        </section>
+
+        {/* CTA Section */}
+        <section className="py-24">
+          <div className="container text-center space-y-8">
+            <div className="space-y-4">
+              <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
+                Ready to Transform Your Healthcare Experience?
+              </h2>
+              <p className="max-w-[600px] mx-auto text-muted-foreground md:text-xl">
+                Join thousands of users who trust TelMed for their healthcare needs. 
+                Start your journey to better health today.
+              </p>
+            </div>
+            <div className="flex flex-col gap-4 sm:flex-row sm:justify-center">
+              <Button size="lg" asChild>
+                <Link to="/register">Create Account</Link>
+              </Button>
+              <Button variant="outline" size="lg" asChild>
+                <Link to="/login">Sign In</Link>
+              </Button>
             </div>
           </div>
         </section>
       </main>
 
-      <footer className="bg-white border-t">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-sm text-gray-500 flex items-center justify-between">
-          <span>© {new Date().getFullYear()} TelMed</span>
-          <div className="flex items-center gap-4">
-            <a href="#" className="hover:text-gray-700">Privacy</a>
-            <a href="#" className="hover:text-gray-700">Terms</a>
-            <a href="#" className="hover:text-gray-700">Support</a>
+      {/* Footer */}
+      <footer className="border-t bg-background">
+        <div className="container py-8">
+          <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
+            <div className="flex items-center space-x-2">
+              <div className="flex h-6 w-6 items-center justify-center rounded bg-primary">
+                <Heart className="h-4 w-4 text-primary-foreground" />
+              </div>
+              <span className="font-semibold">TelMed</span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              © {new Date().getFullYear()} TelMed. All rights reserved.
+            </p>
+            <div className="flex items-center space-x-4 text-sm">
+              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+                Privacy
+              </a>
+              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+                Terms
+              </a>
+              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+                Support
+              </a>
+            </div>
           </div>
         </div>
       </footer>

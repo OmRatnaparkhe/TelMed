@@ -7,7 +7,7 @@ import { getMyAppointments, createAppointment, getPendingAppointments, approveAp
 import { getAvailableDoctors, updateMyAvailabilityStatus, getMyDoctorProfile } from "./doctors/doctors.controller.js";
 import { getMyMedicalRecords, createMedicalRecord } from "./medicalRecords/medicalRecords.controller.js";
 import { checkSymptoms } from "./symptoms/symptoms.controller.js";
-import { getPharmacies, getPharmacyStock, updateStockStatus } from "./pharmacy/pharmacy.controller.js"; // Import pharmacy controllers
+import { getPharmacies, getPharmacyStock, updateStockStatus, searchMedicineStock } from "./pharmacy/pharmacy.controller.js"; // Import pharmacy controllers
 
 dotenv.config();
 
@@ -17,7 +17,7 @@ app.use(express.json());
 
 app.use(
   cors({
-    origin: ["http://localhost:5173"],
+    origin: ["http://localhost:5173","http://localhost:5174"],
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: [
@@ -58,6 +58,7 @@ app.post("/api/medical-records", authenticateToken, createMedicalRecord);
 
 // Public Pharmacy Routes (for map, no auth needed to view)
 app.get("/api/pharmacies", getPharmacies);
+app.get("/api/pharmacies/search", searchMedicineStock); // Public medicine search
 
 // Protected Pharmacist Routes
 app.get("/api/pharmacy/stock", authenticateToken, getPharmacyStock); // Can be filtered by medicineName

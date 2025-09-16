@@ -5,12 +5,23 @@ import L from 'leaflet';
 import api from '../lib/api';
 
 // Fix for default marker icon issues with Webpack
-delete L.Icon.Default.prototype._getIconUrl;
+delete (L.Icon.Default.prototype as any)._getIconUrl;
 
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
   iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
   shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+});
+
+// Create icon instances
+const defaultIcon = new L.Icon.Default();
+const highlightedIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
 });
 
 interface Pharmacy {
@@ -21,11 +32,6 @@ interface Pharmacy {
   longitude: number;
 }
 
-interface PharmacyStock {
-  id: string;
-  medicine: { name: string; genericName: string };
-  stockStatus: string;
-}
 
 const PharmacyLocator: React.FC = () => {
   const [pharmacies, setPharmacies] = useState<Pharmacy[]>([]);
@@ -57,43 +63,10 @@ const PharmacyLocator: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const token = localStorage.getItem('token'); // Stock endpoint is protected
-      if (!token) {
-        // Handle case where user is not logged in, but search is initiated
-        setError('Please log in to search for medicine stock.');
-        setLoading(false);
-        return;
-      }
-      const response = await api.get<PharmacyStock[]>(`/api/pharmacy/stock?medicineName=${searchTerm}`);
-      const pharmaciesWithStock = response.data.map((stock) => stock.id); // This will need adjustment: we need pharmacyId from stock
-
-      // To correctly highlight pharmacies, we need to ensure the backend /api/pharmacy/stock endpoint
-      // returns pharmacyId or a way to link stock items back to pharmacies.
-      // Assuming `stock.id` here refers to `PharmacyStock.id`, which isn't directly a pharmacy ID.
-      // A more robust backend would return `pharmacyId` in the stock items or a separate endpoint.
-      // For now, let's assume the response directly gives us the IDs of pharmacies that have the stock.
-      // (This is a placeholder and needs refinement based on actual backend /api/pharmacy/stock response)
-
-      // For the MVP, I'm adjusting the interpretation: let's assume the backend will return
-      // an array of Pharmacy objects that have the medicine in stock.
-
-      // For now, I'm setting a placeholder for `highlightedPharmacies` based on an assumption.
-      // If `response.data` for `/api/pharmacy/stock` returns an array of Pharmacy objects
-      // that have the medicine, then the following would work:
-      // setHighlightedPharmacies(response.data.map(p => p.id));
-
-      // Given the current backend `getPharmacyStock` returns PharmacyStock, we need to map those
-      // back to Pharmacy IDs. This requires the backend response to include `pharmacyId` for each stock item.
-      const pharmacyIdsWithStock = response.data.map(stockItem => (
-        pharmacies.find(p => p.id === stockItem.id)?.id // This is incorrect, needs stockItem.pharmacyId if backend returns it.
-      )).filter(Boolean) as string[];
-
-      // Let's refine the assumption based on the actual schema (PharmacyStock links pharmacyId)
-      // The getPharmacyStock endpoint should ideally return pharmacyId for each stock item.
-      // For now, I'm making a temporary assumption that the `id` field in PharmacyStock can be used to uniquely identify pharmacies.
-      // This is a known limitation for the current implementation given the backend API design.
-      setHighlightedPharmacies(pharmacyIdsWithStock);
-
+      // Use the new public endpoint that doesn't require authentication
+      const response = await api.get(`/api/pharmacies/search?medicineName=${searchTerm}`);
+      const pharmaciesWithStock = response.data.map((item: any) => item.pharmacyId);
+      setHighlightedPharmacies(pharmaciesWithStock);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to search for medicine stock');
       console.error(err);
@@ -144,7 +117,7 @@ const PharmacyLocator: React.FC = () => {
             <Marker
               key={pharmacy.id}
               position={[pharmacy.latitude, pharmacy.longitude]}
-              icon={highlightedPharmacies.includes(pharmacy.id) ? new L.Icon({ iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png', shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png', iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41] }) : L.Icon.Default}
+              icon={highlightedPharmacies.includes(pharmacy.id) ? highlightedIcon : defaultIcon}
             >
               <Popup>
                 <h3 className="font-bold">{pharmacy.name}</h3>

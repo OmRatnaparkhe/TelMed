@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import api from '../lib/api';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Heart, Mail, Lock, User, Phone, Calendar, MapPin, ArrowLeft } from 'lucide-react';
 
 const RegisterPage: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -9,7 +13,7 @@ const RegisterPage: React.FC = () => {
     firstName: '',
     lastName: '',
     phone: '',
-    role: 'PATIENT', // Default role
+    role: 'PATIENT',
     // Patient specific fields
     dob: '',
     gender: '',
@@ -19,9 +23,9 @@ const RegisterPage: React.FC = () => {
     // Doctor specific fields
     specialization: '',
     qualifications: '',
-    resizeable: '',
     experienceYears: '',
   });
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
@@ -32,96 +36,296 @@ const RegisterPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setLoading(true);
+    
     try {
       await api.post('/api/auth/register', formData);
-      alert('Registration successful! Please log in.');
-      navigate('/login');
+      navigate('/login', { 
+        state: { message: 'Registration successful! Please sign in with your credentials.' }
+      });
     } catch (err: any) {
       setError(err.response?.data?.error || 'Registration failed');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">Create your account</h2>
+    <div className="min-h-screen bg-gradient-to-br from-background via-blue-50/30 to-green-50/30 flex items-center justify-center p-4">
+      <div className="w-full max-w-2xl">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <Link to="/" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-6">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to home
+          </Link>
+          <div className="flex justify-center mb-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
+              <Heart className="h-6 w-6 text-primary-foreground" />
+            </div>
+          </div>
+          <h1 className="text-2xl font-bold">Create your account</h1>
+          <p className="text-muted-foreground">Join TelMed and start your healthcare journey</p>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="rounded-md shadow-sm space-y-4 ml-28">
-            {/* Basic User Fields */}
-            <div>
-              <input name="email" type="email" required className="auth-input p-1" placeholder="Email address" value={formData.email} onChange={handleChange} />
-            </div>
-            <div>
-              <input name="password" type="password" required className="auth-input p-1" placeholder="Password" value={formData.password} onChange={handleChange} />
-            </div>
-            <div>
-              <input name="firstName" type="text" required className="auth-input p-1" placeholder="First Name" value={formData.firstName} onChange={handleChange} />
-            </div>
-            <div>
-              <input name="lastName" type="text" required className="auth-input p-1" placeholder="Last Name" value={formData.lastName} onChange={handleChange} />
-            </div>
-            <div>
-              <input name="phone" type="text" required className="auth-input p-1" placeholder="Phone Number" value={formData.phone} onChange={handleChange} />
-            </div>
-            <div>
-              <select name="role" className="auth-input p-1" value={formData.role} onChange={handleChange}>
-                <option value="PATIENT">Patient</option>
-                <option value="DOCTOR">Doctor</option>
-                <option value="PHARMACIST">Pharmacist</option>
-                <option value="ADMIN">Admin</option>
-              </select>
-            </div>
 
-            {/* Patient Specific Fields */}
-            {formData.role === 'PATIENT' && (
-              <>
-                <div>
-                  <input name="dob" type="date" className="auth-input p-1" placeholder="Date of Birth" value={formData.dob} onChange={handleChange} />
+        <Card>
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-2xl text-center">Sign up</CardTitle>
+            <CardDescription className="text-center">
+              Fill in your information to create your account
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Basic Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label htmlFor="firstName" className="text-sm font-medium">First Name</label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="firstName"
+                      name="firstName"
+                      type="text"
+                      placeholder="Enter your first name"
+                      value={formData.firstName}
+                      onChange={handleChange}
+                      className="pl-10"
+                      required
+                    />
+                  </div>
                 </div>
-                <div>
-                  <input name="gender" type="text" className="auth-input p-1" placeholder="Gender" value={formData.gender} onChange={handleChange} />
+                
+                <div className="space-y-2">
+                  <label htmlFor="lastName" className="text-sm font-medium">Last Name</label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="lastName"
+                      name="lastName"
+                      type="text"
+                      placeholder="Enter your last name"
+                      value={formData.lastName}
+                      onChange={handleChange}
+                      className="pl-10"
+                      required
+                    />
+                  </div>
                 </div>
-                <div>
-                  <input name="address" type="text" className="auth-input p-1" placeholder="Address" value={formData.address} onChange={handleChange} />
-                </div>
-                <div>
-                  <input name="bloodGroup" type="text" className="auth-input p-1" placeholder="Blood Group" value={formData.bloodGroup} onChange={handleChange} />
-                </div>
-                <div>
-                  <input name="emergencyContact" type="text" className="auth-input p-1" placeholder="Emergency Contact" value={formData.emergencyContact} onChange={handleChange} />
-                </div>
-              </>
-            )}
+              </div>
 
-            {/* Doctor Specific Fields */}
-            {formData.role === 'DOCTOR' && (
-              <>
-                <div>
-                  <input name="specialization" type="text" className="auth-input p-1" placeholder="Specialization" value={formData.specialization} onChange={handleChange} />
+              <div className="space-y-2">
+                <label htmlFor="email" className="text-sm font-medium">Email</label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    placeholder="Enter your email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    className="pl-10"
+                    required
+                  />
                 </div>
-                <div>
-                  <input name="qualifications" type="text" className="auth-input p-1" placeholder="Qualifications" value={formData.qualifications} onChange={handleChange} />
-                </div>
-                <div>
-                  <input name="experienceYears" type="number" className="auth-input p-1" placeholder="Years of Experience" value={formData.experienceYears} onChange={handleChange} />
-                </div>
-              </>
-            )}
-          </div>
+              </div>
 
-          {error && <p className="mt-2 text-center text-sm text-red-600">{error}</p>}
+              <div className="space-y-2">
+                <label htmlFor="password" className="text-sm font-medium">Password</label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="password"
+                    name="password"
+                    type="password"
+                    placeholder="Create a password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    className="pl-10"
+                    required
+                  />
+                </div>
+              </div>
 
-          <div>
-            <button
-              type="submit"
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              Register
-            </button>
-          </div>
-        </form>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label htmlFor="phone" className="text-sm font-medium">Phone Number</label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="phone"
+                      name="phone"
+                      type="tel"
+                      placeholder="Enter your phone number"
+                      value={formData.phone}
+                      onChange={handleChange}
+                      className="pl-10"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="role" className="text-sm font-medium">Role</label>
+                  <select
+                    id="role"
+                    name="role"
+                    value={formData.role}
+                    onChange={handleChange}
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    <option value="PATIENT">Patient</option>
+                    <option value="DOCTOR">Doctor</option>
+                    <option value="PHARMACIST">Pharmacist</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Role-specific fields */}
+              {formData.role === 'PATIENT' && (
+                <div className="space-y-4 border-t pt-4">
+                  <h3 className="text-lg font-semibold">Patient Information</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label htmlFor="dob" className="text-sm font-medium">Date of Birth</label>
+                      <div className="relative">
+                        <Calendar className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="dob"
+                          name="dob"
+                          type="date"
+                          value={formData.dob}
+                          onChange={handleChange}
+                          className="pl-10"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label htmlFor="gender" className="text-sm font-medium">Gender</label>
+                      <select
+                        id="gender"
+                        name="gender"
+                        value={formData.gender}
+                        onChange={handleChange}
+                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      >
+                        <option value="">Select gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label htmlFor="bloodGroup" className="text-sm font-medium">Blood Group</label>
+                      <Input
+                        id="bloodGroup"
+                        name="bloodGroup"
+                        type="text"
+                        placeholder="e.g., A+, B-, O+"
+                        value={formData.bloodGroup}
+                        onChange={handleChange}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label htmlFor="emergencyContact" className="text-sm font-medium">Emergency Contact</label>
+                      <Input
+                        id="emergencyContact"
+                        name="emergencyContact"
+                        type="tel"
+                        placeholder="Emergency contact number"
+                        value={formData.emergencyContact}
+                        onChange={handleChange}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label htmlFor="address" className="text-sm font-medium">Address</label>
+                    <div className="relative">
+                      <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="address"
+                        name="address"
+                        type="text"
+                        placeholder="Enter your address"
+                        value={formData.address}
+                        onChange={handleChange}
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {formData.role === 'DOCTOR' && (
+                <div className="space-y-4 border-t pt-4">
+                  <h3 className="text-lg font-semibold">Doctor Information</h3>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label htmlFor="specialization" className="text-sm font-medium">Specialization</label>
+                      <Input
+                        id="specialization"
+                        name="specialization"
+                        type="text"
+                        placeholder="e.g., Cardiology, Dermatology"
+                        value={formData.specialization}
+                        onChange={handleChange}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label htmlFor="qualifications" className="text-sm font-medium">Qualifications</label>
+                      <Input
+                        id="qualifications"
+                        name="qualifications"
+                        type="text"
+                        placeholder="e.g., MBBS, MD"
+                        value={formData.qualifications}
+                        onChange={handleChange}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label htmlFor="experienceYears" className="text-sm font-medium">Years of Experience</label>
+                      <Input
+                        id="experienceYears"
+                        name="experienceYears"
+                        type="number"
+                        placeholder="Years of experience"
+                        value={formData.experienceYears}
+                        onChange={handleChange}
+                        min="0"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {error && (
+                <div className="rounded-md bg-destructive/15 p-3">
+                  <p className="text-sm text-destructive">{error}</p>
+                </div>
+              )}
+
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? 'Creating account...' : 'Create account'}
+              </Button>
+            </form>
+
+            <div className="mt-6 text-center text-sm">
+              <span className="text-muted-foreground">Already have an account? </span>
+              <Link to="/login" className="font-medium text-primary hover:underline">
+                Sign in
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
