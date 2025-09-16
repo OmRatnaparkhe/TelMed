@@ -1,28 +1,17 @@
+<<<<<<< HEAD
 import React, { useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar, Activity, Video, FileText, Users, Shield, Clock, Heart } from 'lucide-react';
+=======
+import React from 'react';
+import { Link } from 'react-router-dom';
+>>>>>>> c3e3419378a6f0adb991f5e7117639f4ed97f144
 
 const LandingPage: React.FC = () => {
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    // If a valid token exists, redirect to the user's role dashboard
-    const token = localStorage.getItem('token');
-    if (token) {
-      try {
-        const decoded: { role?: string; exp: number } = jwtDecode(token);
-        const currentTime = Date.now() / 1000;
-        if (decoded.exp > currentTime && decoded.role) {
-          navigate(`/${decoded.role}`, { replace: true });
-        }
-      } catch {
-        // ignore invalid token and show landing page
-      }
-    }
-  }, [navigate]);
+  // Visiting the landing page will no longer auto-redirect authenticated users.
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-blue-50/30 to-green-50/30">

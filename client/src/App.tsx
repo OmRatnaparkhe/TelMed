@@ -27,16 +27,28 @@ function App() {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
-          {/* Protected Routes */}
+          {/* Protected routes for any authenticated user */}
           <Route element={<ProtectedRoute />}>
             <Route path="/patient" element={<PatientDashboard />} />
             <Route path="/book-appointment" element={<BookAppointment />} />
             <Route path="/symptom-checker" element={<SymptomChecker />} />
             <Route path="/medical-history" element={<MedicalHistory />} />
             <Route path="/pharmacy-locator" element={<PharmacyLocator />} />
+          </Route>
+
+          {/* Doctor-only routes */}
+          <Route element={<ProtectedRoute allowedRoles={["DOCTOR"]} />}>
             <Route path="/doctor" element={<DoctorDashboard />} />
-            <Route path="/consultation/:appointmentId" element={<ProtectedRoute allowedRoles={['DOCTOR']}><ConsultationPage /></ProtectedRoute>} />
+            <Route path="/consultation/:appointmentId" element={<ConsultationPage />} />
+          </Route>
+
+          {/* Pharmacist-only routes */}
+          <Route element={<ProtectedRoute allowedRoles={["PHARMACIST"]} />}>
             <Route path="/pharmacist" element={<PharmacistDashboard />} />
+          </Route>
+
+          {/* Admin-only routes */}
+          <Route element={<ProtectedRoute allowedRoles={["ADMIN"]} />}>
             <Route path="/admin" element={<AdminDashboard />} />
           </Route>
 

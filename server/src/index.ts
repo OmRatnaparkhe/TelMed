@@ -2,12 +2,12 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { register, login, getMe } from "./auth/auth.controller.js";
-import { authenticateToken } from "./auth/auth.middleware.js";
+import { authenticateToken, authorizeRoles } from "./auth/auth.middleware.js";
 import { getMyAppointments, createAppointment, getPendingAppointments, approveAppointment, rejectAppointment, completeAppointment, getTodaysConfirmedAppointmentsForDoctor, getAppointmentHistoryForDoctor } from "./appointments/appointments.controller.js";
 import { getAvailableDoctors, updateMyAvailabilityStatus, getMyDoctorProfile } from "./doctors/doctors.controller.js";
 import { getMyMedicalRecords, createMedicalRecord } from "./medicalRecords/medicalRecords.controller.js";
 import { checkSymptoms } from "./symptoms/symptoms.controller.js";
-import { getPharmacies, getPharmacyStock, updateStockStatus, searchMedicineStock } from "./pharmacy/pharmacy.controller.js"; // Import pharmacy controllers
+import { getPharmacies, getPharmacyStock, updateStockStatus } from "./pharmacy/pharmacy.controller.js"; // Import pharmacy controllers
 
 dotenv.config();
 
@@ -63,6 +63,20 @@ app.get("/api/pharmacies/search", searchMedicineStock); // Public medicine searc
 // Protected Pharmacist Routes
 app.get("/api/pharmacy/stock", authenticateToken, getPharmacyStock); // Can be filtered by medicineName
 app.put("/api/pharmacy/stock/:stockId", authenticateToken, updateStockStatus);
+app.get("/api/pharmacy/inventory", authenticateToken, getInventory);
+app.post("/api/pharmacy/batches", authenticateToken, createBatch);
+app.get("/api/pharmacy/alerts/low-stock", authenticateToken, getLowStockAlerts);
+
+// Prescriptions for pharmacist
+app.get("/api/pharmacy/prescriptions", authenticateToken, listPrescriptions);
+app.patch("/api/pharmacy/prescriptions/:id/status", authenticateToken, updatePrescriptionStatus);
+
+// Admin Routes
+app.get("/api/admin/overview", authenticateToken, authorizeRoles('ADMIN'), getOverview);
+app.get("/api/admin/users", authenticateToken, authorizeRoles('ADMIN'), getAllUsers);
+app.get("/api/admin/doctors", authenticateToken, authorizeRoles('ADMIN'), adminGetAllDoctors);
+app.get("/api/admin/pharmacists", authenticateToken, authorizeRoles('ADMIN'), getAllPharmacists);
+app.get("/api/admin/appointments/summary", authenticateToken, authorizeRoles('ADMIN'), getAppointmentsSummary);
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
 app.listen(PORT, () => {
