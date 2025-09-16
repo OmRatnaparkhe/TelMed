@@ -1,14 +1,8 @@
-<<<<<<< HEAD
-import React, { useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { jwtDecode } from 'jwt-decode';
+import React from 'react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar, Activity, Video, FileText, Users, Shield, Clock, Heart } from 'lucide-react';
-=======
-import React from 'react';
-import { Link } from 'react-router-dom';
->>>>>>> c3e3419378a6f0adb991f5e7117639f4ed97f144
 
 const LandingPage: React.FC = () => {
   // Visiting the landing page will no longer auto-redirect authenticated users.

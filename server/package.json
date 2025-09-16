@@ -26,7 +26,8 @@
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
     "nodemon": "^3.1.10",
-    "openai": "^5.20.2"
+    "openai": "^5.20.2",
+    "process": "^0.11.10"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",

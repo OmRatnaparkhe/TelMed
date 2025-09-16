@@ -7,7 +7,9 @@ import { getMyAppointments, createAppointment, getPendingAppointments, approveAp
 import { getAvailableDoctors, updateMyAvailabilityStatus, getMyDoctorProfile } from "./doctors/doctors.controller.js";
 import { getMyMedicalRecords, createMedicalRecord } from "./medicalRecords/medicalRecords.controller.js";
 import { checkSymptoms } from "./symptoms/symptoms.controller.js";
-import { getPharmacies, getPharmacyStock, updateStockStatus } from "./pharmacy/pharmacy.controller.js"; // Import pharmacy controllers
+import { createBatch, getInventory, getLowStockAlerts, getPharmacies, getPharmacyStock, searchMedicineStock, updateStockStatus } from "./pharmacy/pharmacy.controller.js"; // Import pharmacy controllers
+import { listPrescriptions, updatePrescriptionStatus } from "./pharmacy/prescriptions.controller.js";
+import { getAllPharmacists, getAllUsers, getAllDoctors, getAppointmentsSummary, getOverview } from "./admin/admin.controller.js";
 
 dotenv.config();
 
@@ -74,7 +76,7 @@ app.patch("/api/pharmacy/prescriptions/:id/status", authenticateToken, updatePre
 // Admin Routes
 app.get("/api/admin/overview", authenticateToken, authorizeRoles('ADMIN'), getOverview);
 app.get("/api/admin/users", authenticateToken, authorizeRoles('ADMIN'), getAllUsers);
-app.get("/api/admin/doctors", authenticateToken, authorizeRoles('ADMIN'), adminGetAllDoctors);
+app.get("/api/admin/doctors", authenticateToken, authorizeRoles('ADMIN'), getAllDoctors);
 app.get("/api/admin/pharmacists", authenticateToken, authorizeRoles('ADMIN'), getAllPharmacists);
 app.get("/api/admin/appointments/summary", authenticateToken, authorizeRoles('ADMIN'), getAppointmentsSummary);
 
