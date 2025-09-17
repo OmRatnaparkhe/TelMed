@@ -1,138 +1,90 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import api from '../lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Bell, ChevronDown, LogOut, Package, Users, Activity, Clock } from 'lucide-react';
+import { Bell, ChevronDown, LogOut, Package, Users, Activity, Clock, CheckCircle, XCircle, Pill, AlertTriangle } from 'lucide-react';
 
 interface PharmacistData {
   name: string;
   pharmacy: string;
-  license: string;
   email: string;
 }
 
-interface Order {
+interface InventoryItem {
+  stockId: string;
+  medicineId: string;
+  name: string;
+  genericName?: string | null;
+  status: string; // StockStatus
+  totalQuantity: number;
+  soonestExpiry: string | null;
+}
+
+interface LowStockAlertResponse {
+  lowStock: Array<{ id: string; stockStatus: string; medicine: { name: string; genericName?: string | null } }>;
+  expiringSoon: Array<{ id: string; expiryDate: string; medicine: { name: string; genericName?: string | null } }>;
+}
+
+interface PrescriptionItem {
   id: string;
-  patientName: string;
-  medication: string;
-  status: 'pending' | 'processing' | 'ready' | 'completed';
-  timestamp: string;
-  priority: 'low' | 'medium' | 'high';
+  status: 'PENDING' | 'DISPENSED';
+  createdAt: string;
+  patient: { user: { firstName: string; lastName: string; email: string } };
+  doctor: { user: { firstName: string; lastName: string; email: string } };
+  items: Array<{ medicine: { id: string; name: string; genericName?: string | null }; dosageInstructions: string }>;
 }
 
 const PharmacistDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [pharmacistData, setPharmacistData] = useState<PharmacistData>({
-    name: 'Yogiraj',
+    name: '',
     pharmacy: 'Your Pharmacy',
-    license: '',
     email: '',
   });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [alerts, setAlerts] = useState<LowStockAlertResponse | null>(null);
+  const [prescriptions, setPrescriptions] = useState<PrescriptionItem[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
 
-  // Mock data for recent orders
-  const recentOrders: Order[] = [
-    {
-      id: '1',
-      patientName: 'John Doe',
-      medication: 'Amoxicillin 500mg',
-      status: 'pending',
-      timestamp: '2024-01-15 10:30 AM',
-      priority: 'high'
-    },
-    {
-      id: '2',
-      patientName: 'Jane Smith',
-      medication: 'Lisinopril 10mg',
-      status: 'processing',
-      timestamp: '2024-01-15 09:45 AM',
-      priority: 'medium'
-    },
-    {
-      id: '3',
-      patientName: 'Mike Johnson',
-      medication: 'Metformin 850mg',
-      status: 'ready',
-      timestamp: '2024-01-15 08:20 AM',
-      priority: 'low'
+  const loadData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const me = await api.get('/api/auth/me');
+      if (me.data?.role !== 'PHARMACIST') {
+        navigate('/unauthorized');
+        return;
+      }
+      const fullName = [me.data.firstName, me.data.lastName].filter(Boolean).join(' ');
+      setPharmacistData({
+        name: fullName || 'Pharmacist',
+        pharmacy: 'Your Pharmacy',
+        email: me.data.email || '',
+      });
+
+      const [invRes, alertsRes, rxRes] = await Promise.all([
+        api.get('/api/pharmacy/inventory'),
+        api.get('/api/pharmacy/alerts/low-stock'),
+        api.get('/api/pharmacy/prescriptions', { params: { status: 'PENDING' } }),
+      ]);
+
+      setInventory(invRes.data);
+      setAlerts(alertsRes.data);
+      setPrescriptions(rxRes.data);
+    } catch (e: any) {
+      setError(e?.response?.data?.error || 'Failed to load pharmacist data');
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
   const fetchPharmacistData = async () => {
-    try {
-      // First try to get data from localStorage
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
-        const user = JSON.parse(storedUser);
-        const userRole = user.role || user.user?.role;
-        if (userRole === 'PHARMACIST' || userRole === 'pharmacist') {
-          const firstName = user.firstName || user.user?.firstName || 'Yogiraj';
-          const lastName = user.lastName || user.user?.lastName || '';
-          const fullName = lastName ? `${firstName} ${lastName}` : firstName;
-          
-          setPharmacistData({
-            name: fullName,
-            pharmacy: user.pharmacyName || user.user?.pharmacyName || 'Your Pharmacy',
-            license: user.licenseNumber || user.user?.licenseNumber || '',
-            email: user.email || user.user?.email || '',
-          });
-          return;
-        }
-      }
-
-      // If no localStorage data, try to fetch from API
-      const token = localStorage.getItem('token');
-      if (token) {
-        try {
-          const response = await fetch('/api/auth/profile', {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-          });
-
-          if (response.ok) {
-            const user = await response.json();
-            const userRole = user.role || user.user?.role;
-            if (userRole === 'PHARMACIST' || userRole === 'pharmacist') {
-              const firstName = user.firstName || user.user?.firstName || 'Yogiraj';
-              const lastName = user.lastName || user.user?.lastName || '';
-              const fullName = lastName ? `${firstName} ${lastName}` : firstName;
-              
-              setPharmacistData({
-                name: fullName,
-                pharmacy: user.pharmacyName || user.user?.pharmacyName || 'Your Pharmacy',
-                license: user.licenseNumber || user.user?.licenseNumber || '',
-                email: user.email || user.user?.email || '',
-              });
-              return;
-            }
-          }
-        } catch (apiError) {
-          console.log('API call failed, using fallback');
-        }
-      }
-
-      // Fallback data - use Yogiraj as requested
-      setPharmacistData({
-        name: 'Yogiraj',
-        pharmacy: 'Your Pharmacy',
-        license: '',
-        email: '',
-      });
-      
-    } catch (error) {
-      console.error('Error fetching pharmacist data:', error);
-      // Final fallback
-      setPharmacistData({
-        name: 'Yogiraj',
-        pharmacy: 'Your Pharmacy',
-        license: '',
-        email: '',
-      });
-    }
+    await loadData();
   };
 
   useEffect(() => {
@@ -145,22 +97,20 @@ const PharmacistDashboard: React.FC = () => {
     navigate('/login');
   };
 
-  const getStatusColor = (status: Order['status']) => {
+  const getRxStatusBadge = (status: PrescriptionItem['status']) => {
     switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'processing': return 'bg-blue-100 text-blue-800';
-      case 'ready': return 'bg-green-100 text-green-800';
-      case 'completed': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'PENDING': return <Badge className="bg-yellow-100 text-yellow-800">Pending</Badge>;
+      case 'DISPENSED': return <Badge className="bg-green-100 text-green-800">Dispensed</Badge>;
+      default: return <Badge variant="secondary">{status}</Badge>;
     }
   };
 
-  const getPriorityColor = (priority: Order['priority']) => {
-    switch (priority) {
-      case 'high': return 'bg-red-100 text-red-800';
-      case 'medium': return 'bg-orange-100 text-orange-800';
-      case 'low': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
+  const markPrescription = async (id: string, status: 'PENDING' | 'DISPENSED') => {
+    try {
+      await api.patch(`/api/pharmacy/prescriptions/${id}/status`, { status });
+      await loadData();
+    } catch (e: any) {
+      setError(e?.response?.data?.error || 'Failed to update prescription status');
     }
   };
 
@@ -218,81 +168,121 @@ const PharmacistDashboard: React.FC = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        {loading && (
+          <div className="flex items-center justify-center py-10">
+            <div className="animate-spin rounded-full h-10 w-10 border-4 border-gray-200 border-t-primary"></div>
+          </div>
+        )}
+        {error && (
+          <div className="mb-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-red-600">
+                  <AlertTriangle className="h-5 w-5" /> Error
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-red-600">{error}</p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending Orders</CardTitle>
+              <CardTitle className="text-sm font-medium">Pending Prescriptions</CardTitle>
               <Package className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">12</div>
-              <p className="text-xs text-muted-foreground">+2 from yesterday</p>
+              <div className="text-2xl font-bold">{prescriptions.filter(p => p.status === 'PENDING').length}</div>
+              <p className="text-xs text-muted-foreground">Awaiting dispense</p>
             </CardContent>
           </Card>
           
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Patients</CardTitle>
+              <CardTitle className="text-sm font-medium">Inventory Items</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">48</div>
-              <p className="text-xs text-muted-foreground">+5 new this week</p>
+              <div className="text-2xl font-bold">{inventory.length}</div>
+              <p className="text-xs text-muted-foreground">Tracked medicines</p>
             </CardContent>
           </Card>
           
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Completed Today</CardTitle>
+              <CardTitle className="text-sm font-medium">Low/Out of Stock</CardTitle>
               <Activity className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">23</div>
-              <p className="text-xs text-muted-foreground">+12% from yesterday</p>
+              <div className="text-2xl font-bold">{alerts ? alerts.lowStock.length : 0}</div>
+              <p className="text-xs text-muted-foreground">Needs attention</p>
             </CardContent>
           </Card>
           
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Avg. Processing Time</CardTitle>
+              <CardTitle className="text-sm font-medium">Expiring Soon (30d)</CardTitle>
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">15m</div>
-              <p className="text-xs text-muted-foreground">-3m from last week</p>
+              <div className="text-2xl font-bold">{alerts ? alerts.expiringSoon.length : 0}</div>
+              <p className="text-xs text-muted-foreground">Check batches</p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Recent Orders */}
+        {/* Pending Prescriptions */}
         <Card>
           <CardHeader>
-            <CardTitle>Recent Orders</CardTitle>
+            <CardTitle>Pending Prescriptions</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {recentOrders.map((order) => (
-                <div key={order.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2">
-                      <span className="font-medium">{order.patientName}</span>
-                      <Badge className={getPriorityColor(order.priority)}>
-                        {order.priority}
-                      </Badge>
+            {prescriptions.length === 0 ? (
+              <div className="text-center py-10 text-muted-foreground">No pending prescriptions</div>
+            ) : (
+              <div className="space-y-4">
+                {prescriptions.map((rx) => (
+                  <div key={rx.id} className="p-4 border rounded-lg">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Pill className="h-4 w-4 text-muted-foreground" />
+                          <h3 className="font-medium">
+                            {rx.patient.user.firstName} {rx.patient.user.lastName}
+                          </h3>
+                          {getRxStatusBadge(rx.status)}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          Prescribed by Dr. {rx.doctor.user.firstName} {rx.doctor.user.lastName}
+                        </div>
+                        <ul className="text-sm list-disc list-inside">
+                          {rx.items.map((it, idx) => (
+                            <li key={idx}>
+                              {it.medicine.name}
+                              {it.medicine.genericName ? ` (${it.medicine.genericName})` : ''} – {it.dosageInstructions}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        {rx.status === 'PENDING' ? (
+                          <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => markPrescription(rx.id, 'DISPENSED')}>
+                            <CheckCircle className="h-4 w-4 mr-1" /> Mark Dispensed
+                          </Button>
+                        ) : (
+                          <Button size="sm" variant="outline" onClick={() => markPrescription(rx.id, 'PENDING')}>
+                            <XCircle className="h-4 w-4 mr-1" /> Mark Pending
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                    <p className="text-sm text-gray-600 mt-1">{order.medication}</p>
-                    <p className="text-xs text-gray-500">{order.timestamp}</p>
                   </div>
-                  <Badge className={getStatusColor(order.status)}>
-                    {order.status}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-            <div className="mt-6 text-center">
-              <p className="text-muted-foreground">Recent prescription verifications and activities will appear here</p>
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </main>

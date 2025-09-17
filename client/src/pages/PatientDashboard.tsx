@@ -57,10 +57,24 @@ const PatientDashboard: React.FC = () => {
         // Fetch user data
         const userResponse = await api.get('/api/auth/me');
         setUser(userResponse.data);
+        if (userResponse.data?.role && userResponse.data.role !== 'PATIENT') {
+          navigate('/unauthorized');
+          return;
+        }
 
         // Fetch appointments
-        const appointmentsResponse = await api.get('/api/appointments/my-appointments');
-        setAppointments(appointmentsResponse.data);
+        try {
+          const appointmentsResponse = await api.get('/api/appointments/my-appointments');
+          setAppointments(appointmentsResponse.data);
+        } catch (e: any) {
+          const msg = e?.response?.data?.error || '';
+          if (e?.response?.status === 404 && msg.includes('Patient profile not found')) {
+            // Gracefully handle missing patient profile by showing empty state
+            setAppointments([]);
+          } else {
+            throw e; // let outer catch handle other errors
+          }
+        }
 
       } catch (err: any) {
         setError(err.response?.data?.error || 'Failed to fetch dashboard data');

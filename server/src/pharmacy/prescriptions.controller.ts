@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { PrismaClient, Role } from '@prisma/client';
+import { getPharmacyIdForPharmacist } from '../lib/pharmacyUtils.js';
 // Local typing decoupled from Prisma enum exports to avoid TS import issues across versions
 type PrescriptionStatus = 'PENDING' | 'DISPENSED';
 
@@ -22,21 +23,22 @@ export const listPrescriptions = async (req: AuthRequest, res: Response) => {
   }
 
   const { status } = req.query as { status?: string };
-  // Normalize and validate status if provided
   let normalizedStatus: PrescriptionStatus | undefined = undefined;
   if (status && typeof status === 'string') {
     const candidate = status.toUpperCase();
     if (isPrescriptionStatus(candidate)) {
       normalizedStatus = candidate;
-    } else {
-      return res.status(400).json({ error: 'Invalid status. Allowed: ' + (AllowedPrescriptionStatuses as readonly string[]).join(', ') });
     }
   }
 
   try {
+    // NOTE: This fix assumes your `Prescription` model has a `pharmacyId` field.
+    const pharmacyId = await getPharmacyIdForPharmacist(req.userId);
+
     const prescriptions = await prisma.prescription.findMany({
       where: {
-        ...(normalizedStatus ? { status: normalizedStatus as any } : {}),
+        pharmacyId: pharmacyId, // ✅ CRITICAL: Filter by the pharmacist's pharmacy
+        ...(normalizedStatus ? { status: normalizedStatus } : {}),
       },
       orderBy: { createdAt: 'desc' },
       include: {
@@ -45,17 +47,15 @@ export const listPrescriptions = async (req: AuthRequest, res: Response) => {
         items: {
           include: {
             medicine: { select: { id: true, name: true, genericName: true } },
-            dosageInstructions: true,
           },
         },
       },
       take: 100,
     });
-
     res.json(prescriptions);
-  } catch (error) {
+  } catch (error: any) {
     console.error(error);
-    res.status(500).json({ error: 'Error fetching prescriptions' });
+    res.status(500).json({ error: error.message || 'Error fetching prescriptions' });
   }
 };
 

@@ -1,9 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { Role } from '@prisma/client';
 
 interface AuthRequest extends Request {
   userId?: string;
-  userRole?: string;
+  userRole?: Role;
 }
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
@@ -17,12 +18,13 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
   jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
     if (err) return res.sendStatus(403); // Invalid token
     req.userId = user.userId;
-    req.userRole = user.role;
+    // Ensure role is a valid Role enum member; fallback: treat as undefined if invalid
+    req.userRole = Object.values(Role).includes(user.role) ? (user.role as Role) : undefined;
     next();
   });
 };
 
-export const authorizeRoles = (...roles: string[]) => {
+export const authorizeRoles = (...roles: Role[]) => {
   return (req: AuthRequest, res: Response, next: NextFunction) => {
     if (!req.userRole || !roles.includes(req.userRole)) {
       return res.status(403).json({ message: 'Access denied' });

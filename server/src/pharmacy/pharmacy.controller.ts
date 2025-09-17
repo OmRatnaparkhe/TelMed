@@ -1,11 +1,40 @@
 import { Request, Response } from 'express';
-import { PrismaClient, Role, StockStatus } from '@prisma/client';
+import { PrismaClient, Role, StockStatus, Prisma } from '@prisma/client';
+import { getPharmacyIdForPharmacist } from '../lib/pharmacyUtils.js';
 
 const prisma = new PrismaClient();
 
 interface AuthRequest extends Request {
   userId?: string;
   userRole?: Role;
+}
+
+// Helper: resolve pharmacist's assigned pharmacy; auto-create if missing
+async function resolveOrCreatePharmacyIdForPharmacist(userId: string): Promise<string> {
+  const profile = await prisma.doctorProfile.findUnique({
+    where: { userId },
+    include: { user: { select: { firstName: true, lastName: true } } },
+  });
+  if (!profile) throw new Error('PHARMACIST_PROFILE_NOT_FOUND');
+
+  const existing = await prisma.pharmacy.findFirst({ where: { pharmacistId: profile.id }, select: { id: true } });
+  if (existing) return existing.id;
+
+  const nameParts: string[] = [];
+  if (profile.user?.firstName) nameParts.push(profile.user.firstName);
+  if (profile.user?.lastName) nameParts.push(profile.user.lastName);
+  const pharmacyName = (nameParts.join(' ') || 'New Pharmacist') + ' Pharmacy';
+  const created = await prisma.pharmacy.create({
+    data: {
+      name: pharmacyName,
+      address: 'N/A',
+      latitude: 0,
+      longitude: 0,
+      pharmacistId: profile.id,
+    },
+    select: { id: true },
+  });
+  return created.id;
 }
 
 export const getPharmacies = async (_req: Request, res: Response) => {
@@ -50,126 +79,79 @@ export const getPharmacies = async (_req: Request, res: Response) => {
 };
 
 // New: Aggregated inventory view with optional search, status filter, and expiring soon filter
-export const getInventory = async (req: AuthRequest, res: Response) => {
-  const { search, status, expiringInDays } = req.query as { search?: string; status?: string; expiringInDays?: string };
 
+export const getInventory = async (req: AuthRequest, res: Response) => {
   if (!req.userId || req.userRole !== Role.PHARMACIST) {
     return res.status(403).json({ error: 'Access denied' });
   }
 
   try {
-    const profile = await prisma.doctorProfile.findUnique({
-      where: { userId: req.userId },
-      select: { id: true, managedPharmacies: { select: { id: true } } },
+    const pharmacyId = await getPharmacyIdForPharmacist(req.userId);
+    const stocks = await prisma.pharmacyStock.findMany({
+      where: { pharmacyId },
+      include: { medicine: true },
     });
 
-    if (!profile || profile.managedPharmacies.length === 0) {
-      return res.status(404).json({ error: 'Pharmacist not assigned to a pharmacy' });
-    }
+    const medicineIds = stocks.map(s => s.medicineId);
 
-    const pharmacyId = profile.managedPharmacies[0].id;
+    const batches = await (prisma as any).medicineBatch.findMany({
+      where: {
+        pharmacyId,
+        medicineId: { in: medicineIds },
+      },
+    });
 
-    const whereMedicine: any = {};
-    if (search && search.trim()) {
-      whereMedicine.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { genericName: { contains: search, mode: 'insensitive' } },
-      ];
-    }
-
-    // Fetch stock status and batches
-    const [stocks, batches] = await Promise.all([
-      prisma.pharmacyStock.findMany({
-        where: { pharmacyId, ...(status ? { stockStatus: status as StockStatus } : {}) },
-        include: { medicine: true },
-      }),
-      (prisma as any).medicineBatch.findMany({
-        where: {
-          pharmacyId,
-          medicine: whereMedicine,
-          ...(expiringInDays
-            ? { expiryDate: { lte: new Date(Date.now() + Number(expiringInDays) * 24 * 60 * 60 * 1000) } }
-            : {}),
-        },
-        include: { medicine: true },
-        orderBy: { expiryDate: 'asc' },
-      }),
-    ]);
-
-    // Aggregate quantities per medicine and attach soonest expiry
     const batchesByMedicine = new Map<string, { totalQty: number; soonestExpiry?: Date }>();
-    for (const b of batches) {
-      const entry = batchesByMedicine.get(b.medicineId) || { totalQty: 0 as number, soonestExpiry: undefined as Date | undefined };
-      entry.totalQty += b.quantity;
-      if (!entry.soonestExpiry || b.expiryDate < entry.soonestExpiry) entry.soonestExpiry = b.expiryDate;
-      batchesByMedicine.set(b.medicineId, entry);
+    for (const batch of batches) {
+      const entry = batchesByMedicine.get(batch.medicineId) || { totalQty: 0, soonestExpiry: undefined };
+      entry.totalQty += batch.quantity;
+      if (!entry.soonestExpiry || batch.expiryDate < entry.soonestExpiry) {
+        entry.soonestExpiry = batch.expiryDate;
+      }
+      batchesByMedicine.set(batch.medicineId, entry);
     }
 
-    const result = stocks
-      .filter((s: any) => {
-        if (!search) return true;
-        const med = s.medicine;
-        const q = search!.toLowerCase();
-        return med.name.toLowerCase().includes(q) || (med.genericName?.toLowerCase().includes(q) ?? false);
-      })
-      .map((s: any) => ({
-        stockId: s.id,
-        medicineId: s.medicineId,
-        name: s.medicine.name,
-        genericName: s.medicine.genericName,
-        status: s.stockStatus,
-        totalQuantity: batchesByMedicine.get(s.medicineId)?.totalQty ?? 0,
-        soonestExpiry: batchesByMedicine.get(s.medicineId)?.soonestExpiry ?? null,
-      }));
+    const result = stocks.map(stock => ({
+      stockId: stock.id,
+      medicineId: stock.medicineId,
+      name: stock.medicine.name,
+      genericName: stock.medicine.genericName,
+      status: stock.stockStatus,
+      totalQuantity: batchesByMedicine.get(stock.medicineId)?.totalQty ?? 0,
+      soonestExpiry: batchesByMedicine.get(stock.medicineId)?.soonestExpiry?.toISOString() ?? null,
+    }));
 
     res.json(result);
-  } catch (error) {
+  } catch (error: any) {
     console.error(error);
-    res.status(500).json({ error: 'Error fetching inventory' });
+    res.status(500).json({ error: error.message || 'Error fetching inventory' });
   }
 };
 
 // New: Create a batch with expiry for a medicine in the pharmacist's pharmacy
 export const createBatch = async (req: AuthRequest, res: Response) => {
   if (!req.userId || req.userRole !== Role.PHARMACIST) {
-    return res.status(403).json({ error: 'Access denied' });
+      return res.status(403).json({ error: 'Access denied' });
   }
-
-  const { medicineId, batchNumber, quantity, expiryDate } = req.body as {
-    medicineId: string;
-    batchNumber: string;
-    quantity: number;
-    expiryDate: string;
-  };
-
+  const { medicineId, batchNumber, quantity, expiryDate } = req.body;
   if (!medicineId || !batchNumber || !quantity || !expiryDate) {
-    return res.status(400).json({ error: 'medicineId, batchNumber, quantity, and expiryDate are required' });
+      return res.status(400).json({ error: 'Missing required fields' });
   }
-
   try {
-    const profile = await prisma.doctorProfile.findUnique({
-      where: { userId: req.userId },
-      select: { id: true, managedPharmacies: { select: { id: true } } },
-    });
-    if (!profile || profile.managedPharmacies.length === 0) {
-      return res.status(404).json({ error: 'Pharmacist not assigned to a pharmacy' });
-    }
-    const pharmacyId = profile.managedPharmacies[0].id;
-
-    const batch = await (prisma as any).medicineBatch.create({
-      data: {
-        pharmacyId,
-        medicineId,
-        batchNumber,
-        quantity: Number(quantity),
-        expiryDate: new Date(expiryDate),
-      },
-    });
-
-    res.status(201).json(batch);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Error creating batch' });
+      const pharmacyId = await getPharmacyIdForPharmacist(req.userId);
+      const batch = await (prisma as any).medicineBatch.create({
+          data: {
+              pharmacyId,
+              medicineId,
+              batchNumber,
+              quantity: Number(quantity),
+              expiryDate: new Date(expiryDate),
+          },
+      });
+      res.status(201).json(batch);
+  } catch (error: any) {
+      console.error(error);
+      res.status(500).json({ error: error.message || 'Error creating batch' });
   }
 };
 
@@ -180,24 +162,22 @@ export const getLowStockAlerts = async (req: AuthRequest, res: Response) => {
   }
 
   try {
-    const profile = await prisma.doctorProfile.findUnique({
-      where: { userId: req.userId },
-      select: { id: true, managedPharmacies: { select: { id: true } } },
-    });
-    if (!profile || profile.managedPharmacies.length === 0) {
-      return res.status(404).json({ error: 'Pharmacist not assigned to a pharmacy' });
-    }
-    const pharmacyId = profile.managedPharmacies[0].id;
+    const pharmacyId = await getPharmacyIdForPharmacist(req.userId);
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
 
     const [lowStock, expiringSoon] = await Promise.all([
       prisma.pharmacyStock.findMany({
-        where: { pharmacyId, stockStatus: { in: [StockStatus.LOW_STOCK, StockStatus.OUT_OF_STOCK] } },
+        where: {
+          pharmacyId,
+          stockStatus: { in: [StockStatus.LOW_STOCK, StockStatus.OUT_OF_STOCK] },
+        },
         include: { medicine: true },
       }),
       (prisma as any).medicineBatch.findMany({
         where: {
           pharmacyId,
-          expiryDate: { lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) }, // next 30 days
+          expiryDate: { lte: thirtyDaysFromNow },
         },
         include: { medicine: true },
         orderBy: { expiryDate: 'asc' },
@@ -205,9 +185,9 @@ export const getLowStockAlerts = async (req: AuthRequest, res: Response) => {
     ]);
 
     res.json({ lowStock, expiringSoon });
-  } catch (error) {
+  } catch (error: any) {
     console.error(error);
-    res.status(500).json({ error: 'Error fetching alerts' });
+    res.status(500).json({ error: error.message || 'Error fetching alerts' });
   }
 };
 
@@ -219,21 +199,13 @@ export const getPharmacyStock = async (req: AuthRequest, res: Response) => {
   }
 
   try {
-    const doctorProfile = await prisma.doctorProfile.findUnique({
-      where: { userId: req.userId },
-      select: { id: true, managedPharmacies: { select: { id: true } } },
-    });
-
-    if (!doctorProfile || doctorProfile.managedPharmacies.length === 0) {
-      return res.status(404).json({ error: 'Pharmacist not assigned to a pharmacy' });
-    }
-
-    const pharmacyId = doctorProfile.managedPharmacies[0].id; // Changed to managedPharmacies
+    const pharmacyId = await getPharmacyIdForPharmacist(req.userId);
 
     const whereClause: any = { pharmacyId };
     if (medicineName) {
       whereClause.medicine = {
-        name: { contains: medicineName as string, mode: 'insensitive' },
+        // SQLite does not support case-insensitive mode in Prisma filters
+        name: { contains: medicineName as string },
       };
     }
 
@@ -265,7 +237,12 @@ export const searchMedicineStock = async (req: Request, res: Response) => {
   console.log(`Searching for medicine: ${medicineName}`);
   
   // First, try to connect to the database
-  let pharmacyStock = [];
+  let pharmacyStock: Prisma.PharmacyStockGetPayload<{
+    include: {
+      medicine: { select: { id: true; name: true; genericName: true } };
+      pharmacy: { select: { id: true; name: true; address: true; latitude: true; longitude: true } };
+    };
+  }>[] = [];
   let useDatabase = true;
   
   try {
@@ -276,8 +253,9 @@ export const searchMedicineStock = async (req: Request, res: Response) => {
       where: {
         medicine: {
           OR: [
-            { name: { contains: medicineName as string, mode: 'insensitive' } },
-            { genericName: { contains: medicineName as string, mode: 'insensitive' } }
+            // SQLite does not support case-insensitive mode in Prisma filters
+            { name: { contains: medicineName as string } },
+            { genericName: { contains: medicineName as string } }
           ]
         },
         stockStatus: 'IN_STOCK', // Only show pharmacies with stock
@@ -397,7 +375,6 @@ export const searchMedicineStock = async (req: Request, res: Response) => {
     return res.json(mockData);
   }
 };
-
 export const updateStockStatus = async (req: AuthRequest, res: Response) => {
   if (!req.userId || req.userRole !== Role.PHARMACIST) {
     return res.status(403).json({ error: 'Access denied' });
@@ -407,38 +384,42 @@ export const updateStockStatus = async (req: AuthRequest, res: Response) => {
   const { stockStatus } = req.body;
 
   if (!Object.values(StockStatus).includes(stockStatus)) {
-    return res.status(400).json({ error: 'Invalid stock status provided' });
+    return res.status(400).json({ error: 'Invalid stock status' });
   }
 
   try {
-    const doctorProfile = await prisma.doctorProfile.findUnique({
-      where: { userId: req.userId },
-      select: { id: true, managedPharmacies: { select: { id: true } } },
+    const pharmacyId = await getPharmacyIdForPharmacist(req.userId);
+    const stockItem = await prisma.pharmacyStock.findFirst({
+      where: {
+        id: stockId,
+        pharmacyId: pharmacyId, // Ensure item belongs to the pharmacist's pharmacy
+      },
     });
 
-    if (!doctorProfile || doctorProfile.managedPharmacies.length === 0) {
-      return res.status(404).json({ error: 'Pharmacist not assigned to a pharmacy' });
-    }
-
-    const pharmacyId = doctorProfile.managedPharmacies[0].id; // Changed to managedPharmacies
-
-    const stockItem = await prisma.pharmacyStock.findUnique({
-      where: { id: stockId },
-      select: { pharmacyId: true },
-    });
-
-    if (!stockItem || stockItem.pharmacyId !== pharmacyId) {
-      return res.status(404).json({ error: 'Stock item not found or not in assigned pharmacy' });
+    if (!stockItem) {
+      return res.status(404).json({ error: 'Stock item not found in your pharmacy' });
     }
 
     const updatedStock = await prisma.pharmacyStock.update({
       where: { id: stockId },
       data: { stockStatus },
     });
-
     res.json(updatedStock);
+  } catch (error: any) {
+    console.error(error);
+    res.status(500).json({ error: error.message || 'Error updating stock status' });
+  }
+};
+
+export const getAllMedicines = async (_req: Request, res: Response) => {
+  try {
+    const medicines = await prisma.medicine.findMany({
+      select: { id: true, name: true, genericName: true },
+      orderBy: { name: 'asc' },
+    });
+    res.json(medicines);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Error updating stock status' });
+    res.status(500).json({ error: 'Error fetching medicines' });
   }
 };

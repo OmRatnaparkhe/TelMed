@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import api from '../lib/api';
 import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 
 // TypeScript declarations for Speech Recognition API
 declare global {
@@ -222,15 +224,15 @@ const SymptomChecker: React.FC = () => {
         <div className="mb-4">
           <label htmlFor="symptoms" className="block text-sm font-medium text-gray-700">Describe your symptoms:</label>
           <div className="mt-1 relative rounded-md shadow-sm">
-            <textarea
+            <Textarea
               id="symptoms"
               name="symptoms"
               rows={5}
-              className="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md p-2"
+              className="block w-full sm:text-sm rounded-md p-2"
               placeholder="e.g., I have a fever, cough, and sore throat..."
               value={symptoms}
               onChange={(e) => setSymptoms(e.target.value)}
-            ></textarea>
+            ></Textarea>
             <div className="absolute bottom-2 right-2 flex gap-2">
               {!speechSupported && (
                 <div className="bg-gray-400 text-white px-3 py-1 rounded text-xs">
@@ -242,7 +244,7 @@ const SymptomChecker: React.FC = () => {
                   Mic access denied
                 </div>
               )}
-              <button
+              <Button
                 type="button"
                 onClick={isListening ? stopListening : handleSpeechToText}
                 disabled={!speechSupported || microphonePermission === 'denied'}
@@ -264,18 +266,18 @@ const SymptomChecker: React.FC = () => {
                     <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd" />
                   </svg>
                 )}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
 
-        <button
+        <Button
           onClick={handleCheckSymptoms}
           disabled={loading || !symptoms.trim()}
           className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? 'Checking...' : 'Check Symptoms'}
-        </button>
+        </Button>
 
         {error && <p className="mt-4 text-sm text-red-600">Error: {error}</p>}
 

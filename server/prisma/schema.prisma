@@ -47,6 +47,7 @@ model User {
 
   patientProfile PatientProfile?
   doctorProfile  DoctorProfile?
+   pharmacistProfile PharmacistProfile?
 }
 
 model PatientProfile {
@@ -78,8 +79,16 @@ model DoctorProfile {
 
   appointments      Appointment[]   @relation("DoctorAppointments")
   medicalRecords    MedicalRecord[]
-  managedPharmacies Pharmacy[] // Renamed from 'pharmacies' for clarity, assuming a pharmacist manages these
   Prescription      Prescription[]
+}
+
+
+model PharmacistProfile {
+  id         String   @id @default(uuid())
+  userId     String   @unique
+  user       User     @relation(fields: [userId], references: [id])
+  pharmacyId String?  @unique // A pharmacist is linked to one pharmacy
+  pharmacy   Pharmacy? @relation(fields: [pharmacyId], references: [id])
 }
 
 model Appointment {
@@ -102,7 +111,6 @@ model MedicalRecord {
   doctorId      String
   appointmentId String
   diagnosis     String
-  prescription  String
   createdAt     DateTime @default(now())
 
   patient     PatientProfile @relation(fields: [patientId], references: [id])
@@ -111,16 +119,17 @@ model MedicalRecord {
 }
 
 model Pharmacy {
-  id           String @id @default(uuid())
-  name         String
-  address      String
-  latitude     Float
-  longitude    Float
-  pharmacistId String // Foreign key
+  id            String  @id @default(uuid())
+  name          String
+  address       String
+  latitude      Float
+  longitude     Float
+  pharmacistId  String? @unique // CHANGED: A pharmacy has one pharmacist
 
-  pharmacist    DoctorProfile   @relation(fields: [pharmacistId], references: [id])
+  pharmacist    PharmacistProfile? // CHANGED: Now correctly relates to PharmacistProfile
   stocks        PharmacyStock[]
   MedicineBatch MedicineBatch[]
+  prescriptions Prescription[]     // ADDED: Relation to incoming prescriptions
 }
 
 model Medicine {
@@ -164,11 +173,13 @@ model Prescription {
   id        String             @id @default(uuid())
   patientId String
   doctorId  String
+  pharmacyId String?            // ADDED: Foreign key to link to a pharmacy
   status    PrescriptionStatus @default(PENDING)
   createdAt DateTime           @default(now())
 
-  patient PatientProfile     @relation(fields: [patientId], references: [id])
-  doctor  DoctorProfile      @relation(fields: [doctorId], references: [id])
+  patient PatientProfile @relation(fields: [patientId], references: [id])
+  doctor  DoctorProfile  @relation(fields: [doctorId], references: [id])
+  pharmacy Pharmacy?     @relation(fields: [pharmacyId], references: [id]) // ADDED: Relation to the assigned pharmacy
   items   PrescriptionItem[]
 }
 

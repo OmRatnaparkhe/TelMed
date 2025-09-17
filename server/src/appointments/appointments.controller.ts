@@ -195,6 +195,54 @@ export const getAppointmentHistoryForDoctor = async (req: AuthRequest, res: Resp
   }
 };
 
+export const getAppointmentByIdForDoctor = async (req: AuthRequest, res: Response) => {
+  if (!req.userId || req.userRole !== Role.DOCTOR) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+
+  const { id } = req.params; // appointment ID
+
+  try {
+    const doctorProfile = await prisma.doctorProfile.findUnique({
+      where: { userId: req.userId },
+      select: { id: true },
+    });
+
+    if (!doctorProfile) {
+      return res.status(404).json({ error: 'Doctor profile not found' });
+    }
+
+    const appointment = await prisma.appointment.findUnique({
+      where: { id },
+      include: {
+        patient: {
+          select: {
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                phone: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!appointment || appointment.doctorId !== doctorProfile.id) {
+      return res.status(404).json({ error: 'Appointment not found or not assigned to this doctor' });
+    }
+
+    // Return the appointment as-is; client expects: id, patient.user{...}, symptoms, appointmentTime
+    return res.json(appointment);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: 'Error fetching appointment details' });
+  }
+};
+
 export const approveAppointment = async (req: AuthRequest, res: Response) => {
   if (!req.userId || req.userRole !== Role.DOCTOR) {
     return res.status(403).json({ error: 'Access denied' });

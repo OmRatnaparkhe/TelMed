@@ -3,11 +3,11 @@ import cors from "cors";
 import dotenv from "dotenv";
 import { register, login, getMe } from "./auth/auth.controller.js";
 import { authenticateToken, authorizeRoles } from "./auth/auth.middleware.js";
-import { getMyAppointments, createAppointment, getPendingAppointments, approveAppointment, rejectAppointment, completeAppointment, getTodaysConfirmedAppointmentsForDoctor, getAppointmentHistoryForDoctor } from "./appointments/appointments.controller.js";
+import { getMyAppointments, createAppointment, getPendingAppointments, approveAppointment, rejectAppointment, completeAppointment, getTodaysConfirmedAppointmentsForDoctor, getAppointmentHistoryForDoctor, getAppointmentByIdForDoctor } from "./appointments/appointments.controller.js";
 import { getAvailableDoctors, updateMyAvailabilityStatus, getMyDoctorProfile } from "./doctors/doctors.controller.js";
 import { getMyMedicalRecords, createMedicalRecord } from "./medicalRecords/medicalRecords.controller.js";
 import { checkSymptoms } from "./symptoms/symptoms.controller.js";
-import { createBatch, getInventory, getLowStockAlerts, getPharmacies, getPharmacyStock, searchMedicineStock, updateStockStatus } from "./pharmacy/pharmacy.controller.js"; // Import pharmacy controllers
+import { createBatch, getInventory, getLowStockAlerts, getPharmacies, getPharmacyStock, searchMedicineStock, updateStockStatus, getAllMedicines } from "./pharmacy/pharmacy.controller.js"; // Import pharmacy controllers
 import { listPrescriptions, updatePrescriptionStatus } from "./pharmacy/prescriptions.controller.js";
 import { getAllPharmacists, getAllUsers, getAllDoctors, getAppointmentsSummary, getOverview } from "./admin/admin.controller.js";
 
@@ -55,12 +55,15 @@ app.get("/api/appointments/history", authenticateToken, getAppointmentHistoryFor
 app.put("/api/appointments/:id/approve", authenticateToken, approveAppointment);
 app.put("/api/appointments/:id/reject", authenticateToken, rejectAppointment);
 app.put("/api/appointments/:id/complete", authenticateToken, completeAppointment);
+// Keep the generic route LAST to avoid shadowing specific routes above
+app.get("/api/appointments/:id", authenticateToken, getAppointmentByIdForDoctor);
 app.put("/api/doctors/me/status", authenticateToken, updateMyAvailabilityStatus);
 app.post("/api/medical-records", authenticateToken, createMedicalRecord);
 
 // Public Pharmacy Routes (for map, no auth needed to view)
 app.get("/api/pharmacies", getPharmacies);
 app.get("/api/pharmacies/search", searchMedicineStock); // Public medicine search
+app.get("/api/medicines", getAllMedicines); // New: Get all medicines
 
 // Protected Pharmacist Routes
 app.get("/api/pharmacy/stock", authenticateToken, getPharmacyStock); // Can be filtered by medicineName
