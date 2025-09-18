@@ -1,8 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
-import api from '../lib/api';
-import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
+import React, { useState, useEffect, useRef } from "react";
 
 // TypeScript declarations for Speech Recognition API
 declare global {
@@ -22,154 +18,66 @@ interface SpeechRecognitionErrorEvent extends Event {
   message?: string;
 }
 
-interface SymptomResult {
-  condition: string;
-  recommendation: string;
+interface Condition {
+  ConditionName: string;
+  Probability: number;
+  Description: string;
+  matchedSymptoms?: string[];
 }
 
 const SymptomChecker: React.FC = () => {
-  const [symptoms, setSymptoms] = useState('');
-  const [results, setResults] = useState<SymptomResult[] | null>(null);
+  const [symptom, setSymptom] = useState("");
+  const [symptoms, setSymptoms] = useState<string[]>([]);
+  const [conditions, setConditions] = useState<Condition[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState("");
   const [isListening, setIsListening] = useState(false);
-  const [microphonePermission, setMicrophonePermission] = useState<'granted' | 'denied' | 'prompt' | 'checking'>('checking');
-  const [speechSupported, setSpeechSupported] = useState(false);
+  const [isSupported, setIsSupported] = useState(true);
   const recognitionRef = useRef<any>(null);
-  const retryCountRef = useRef(0);
-  const navigate = useNavigate();
 
-  const handleCheckSymptoms = async () => {
-    setLoading(true);
-    setError(null);
-    setResults(null);
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        navigate('/login');
-        return;
-      }
-      const response = await api.post('/api/symptoms/check', { symptoms });
-      setResults(response.data);
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to check symptoms');
-      console.error(err);
-    } finally {
-      setLoading(false);
+  const handleAddSymptom = () => {
+    if (symptom.trim() !== "" && !symptoms.includes(symptom.trim().toLowerCase())) {
+      setSymptoms([...symptoms, symptom.trim().toLowerCase()]);
+      setSymptom("");
+      setError("");
     }
   };
 
-  // Check speech recognition support and microphone permissions
+  const removeSymptom = (indexToRemove: number) => {
+    setSymptoms(symptoms.filter((_, index) => index !== indexToRemove));
+  };
+
+  // Initialize speech recognition
   useEffect(() => {
-    const checkSpeechSupport = () => {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      setSpeechSupported(!!SpeechRecognition);
-    };
-
-    const checkMicrophonePermission = async () => {
-      try {
-        const permission = await navigator.permissions.query({ name: 'microphone' as PermissionName });
-        setMicrophonePermission(permission.state as any);
-        
-        permission.onchange = () => {
-          setMicrophonePermission(permission.state as any);
-        };
-      } catch (error) {
-        console.log('Permission API not supported, will request permission on use');
-        setMicrophonePermission('prompt');
-      }
-    };
-
-    checkSpeechSupport();
-    checkMicrophonePermission();
-  }, []);
-
-  const requestMicrophonePermission = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      stream.getTracks().forEach(track => track.stop());
-      setMicrophonePermission('granted');
-      return true;
-    } catch (error) {
-      console.error('Microphone permission denied:', error);
-      setMicrophonePermission('denied');
-      setError('Microphone access is required for voice input. Please enable microphone permissions in your browser settings.');
-      return false;
-    }
-  };
-
-  const initializeSpeechRecognition = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setIsSupported(false);
+      return;
+    }
+
     const recognition = new SpeechRecognition();
-    
-    recognition.continuous = false;
+    recognition.lang = "en-US";
     recognition.interimResults = true;
-    recognition.lang = 'en-US';
-    recognition.maxAlternatives = 1;
+    recognition.continuous = false;
 
     recognition.onstart = () => {
       setIsListening(true);
-      setError(null);
+      setError("");
     };
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
-      let finalTranscript = '';
-      let interimTranscript = '';
-
+      let finalTranscript = "";
+      
       for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
+        const transcriptPart = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
-          finalTranscript += transcript;
-        } else {
-          interimTranscript += transcript;
+          finalTranscript += transcriptPart;
         }
       }
 
       if (finalTranscript) {
-        setSymptoms(prev => prev + (prev ? ' ' : '') + finalTranscript);
-      }
-    };
-
-    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      console.error('Speech recognition error:', event.error);
-      setIsListening(false);
-      
-      switch (event.error) {
-        case 'network':
-          if (retryCountRef.current < 2) {
-            retryCountRef.current += 1;
-            console.log(`Network error, retrying... (attempt ${retryCountRef.current})`);
-            setTimeout(() => {
-              if (recognitionRef.current) {
-                try {
-                  recognitionRef.current.start();
-                  setIsListening(true);
-                } catch (err) {
-                  console.error('Failed to restart recognition:', err);
-                  setError('Network connection unstable. Please try again manually.');
-                }
-              }
-            }, 1000);
-          } else {
-            retryCountRef.current = 0;
-            setError('Network connection unstable. Please check your internet connection and try again.');
-          }
-          break;
-        case 'not-allowed':
-          setError('Microphone access denied. Please enable microphone permissions and try again.');
-          setMicrophonePermission('denied');
-          break;
-        case 'no-speech':
-          setError('No speech detected. Please try speaking again.');
-          break;
-        case 'audio-capture':
-          setError('Audio capture failed. Please check your microphone and try again.');
-          break;
-        case 'service-not-allowed':
-          setError('Speech recognition service not available. Please try again later.');
-          break;
-        default:
-          setError(`Speech recognition error: ${event.error}. Please try again.`);
+        // Add the recognized speech to the current symptom input
+        setSymptom(prev => prev + (prev ? " " : "") + finalTranscript.trim());
       }
     };
 
@@ -177,126 +85,581 @@ const SymptomChecker: React.FC = () => {
       setIsListening(false);
     };
 
-    return recognition;
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      console.error("Speech recognition error:", event.error);
+      setIsListening(false);
+      
+      switch (event.error) {
+        case 'not-allowed':
+          setError("Microphone access denied. Please allow microphone access and try again.");
+          break;
+        case 'no-speech':
+          setError("No speech detected. Please try speaking again.");
+          break;
+        case 'network':
+          setError("Network error. Check your internet connection and try again.");
+          break;
+        case 'audio-capture':
+          setError("Audio capture failed. Please check your microphone.");
+          break;
+        default:
+          setError(`Speech recognition error: ${event.error}. Please try again.`);
+      }
+    };
+
+    recognitionRef.current = recognition;
+  }, []);
+
+  const handleSpeechInput = () => {
+    if (!recognitionRef.current || !isSupported) {
+      setError("Speech recognition not supported in this browser. Please use Chrome or Edge.");
+      return;
+    }
+    
+    if (isListening) {
+      recognitionRef.current.stop();
+    } else {
+      setError("");
+      try {
+        recognitionRef.current.start();
+      } catch (error) {
+        console.error("Failed to start speech recognition:", error);
+        setError("Failed to start speech recognition. Please try again.");
+      }
+    }
   };
 
-  const handleSpeechToText = async () => {
-    if (!speechSupported) {
-      setError('Speech Recognition is not supported by this browser. Please use Chrome, Edge, or Safari.');
+  // Mock medical knowledge base for demonstration
+  const medicalKnowledge: Record<string, Array<{ name: string; probability: number; description: string }>> = {
+    fever: [
+      { name: "Common Cold", probability: 0.65, description: "Viral upper respiratory infection" },
+      { name: "Influenza", probability: 0.45, description: "Seasonal flu virus" },
+      { name: "COVID-19", probability: 0.35, description: "Coronavirus infection" },
+      { name: "Bacterial Infection", probability: 0.25, description: "Various bacterial causes" }
+    ],
+    headache: [
+      { name: "Tension Headache", probability: 0.70, description: "Stress-related headache" },
+      { name: "Migraine", probability: 0.40, description: "Severe recurring headache" },
+      { name: "Sinus Infection", probability: 0.30, description: "Inflammation of sinuses" },
+      { name: "Dehydration", probability: 0.25, description: "Insufficient fluid intake" }
+    ],
+    cough: [
+      { name: "Common Cold", probability: 0.60, description: "Viral upper respiratory infection" },
+      { name: "Bronchitis", probability: 0.45, description: "Inflammation of bronchial tubes" },
+      { name: "Allergies", probability: 0.35, description: "Allergic reaction" },
+      { name: "Asthma", probability: 0.30, description: "Respiratory condition" }
+    ],
+    "sore throat": [
+      { name: "Viral Pharyngitis", probability: 0.65, description: "Viral throat infection" },
+      { name: "Strep Throat", probability: 0.35, description: "Bacterial throat infection" },
+      { name: "Allergies", probability: 0.25, description: "Allergic reaction" },
+      { name: "Acid Reflux", probability: 0.20, description: "Stomach acid irritation" }
+    ],
+    "runny nose": [
+      { name: "Common Cold", probability: 0.70, description: "Viral upper respiratory infection" },
+      { name: "Allergies", probability: 0.50, description: "Allergic rhinitis" },
+      { name: "Sinusitis", probability: 0.30, description: "Sinus inflammation" }
+    ],
+    fatigue: [
+      { name: "Viral Infection", probability: 0.50, description: "Various viral causes" },
+      { name: "Sleep Deprivation", probability: 0.45, description: "Insufficient rest" },
+      { name: "Stress", probability: 0.40, description: "Physical or mental stress" },
+      { name: "Anemia", probability: 0.25, description: "Low iron levels" }
+    ],
+    nausea: [
+      { name: "Gastroenteritis", probability: 0.55, description: "Stomach flu" },
+      { name: "Food Poisoning", probability: 0.40, description: "Contaminated food" },
+      { name: "Migraine", probability: 0.30, description: "Severe headache with nausea" },
+      { name: "Anxiety", probability: 0.25, description: "Stress-related nausea" }
+    ],
+    "stomach pain": [
+      { name: "Gastritis", probability: 0.50, description: "Stomach lining inflammation" },
+      { name: "Food Poisoning", probability: 0.40, description: "Contaminated food" },
+      { name: "Indigestion", probability: 0.35, description: "Digestive discomfort" },
+      { name: "Appendicitis", probability: 0.15, description: "Appendix inflammation" }
+    ],
+    dizziness: [
+      { name: "Dehydration", probability: 0.45, description: "Insufficient fluid intake" },
+      { name: "Low Blood Pressure", probability: 0.35, description: "Hypotension" },
+      { name: "Inner Ear Problem", probability: 0.30, description: "Balance disorder" },
+      { name: "Anemia", probability: 0.25, description: "Low iron levels" }
+    ],
+    "muscle aches": [
+      { name: "Viral Infection", probability: 0.55, description: "Flu-like symptoms" },
+      { name: "Physical Strain", probability: 0.45, description: "Overexertion" },
+      { name: "Fibromyalgia", probability: 0.25, description: "Chronic pain condition" },
+      { name: "Dehydration", probability: 0.20, description: "Electrolyte imbalance" }
+    ]
+  };
+
+  const analyzeSymptoms = async () => {
+    if (symptoms.length === 0) {
+      setError("Please add at least one symptom before analyzing.");
       return;
     }
 
-    if (microphonePermission === 'denied') {
-      const granted = await requestMicrophonePermission();
-      if (!granted) return;
-    }
+    setLoading(true);
+    setError("");
+    setConditions([]);
 
-    if (microphonePermission === 'prompt') {
-      const granted = await requestMicrophonePermission();
-      if (!granted) return;
-    }
+    // Simulate API delay for realistic experience
+    await new Promise(resolve => setTimeout(resolve, 1500));
 
     try {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
+      const conditionMap = new Map();
       
-      retryCountRef.current = 0; // Reset retry counter on successful start
-      recognitionRef.current = initializeSpeechRecognition();
-      recognitionRef.current.start();
-    } catch (error) {
-      console.error('Failed to start speech recognition:', error);
-      setError('Failed to start speech recognition. Please try again.');
+      // Analyze each symptom and aggregate conditions
+      symptoms.forEach(symptom => {
+        const symptomLower = symptom.toLowerCase().trim();
+        const possibleConditions = medicalKnowledge[symptomLower] || [];
+        
+        possibleConditions.forEach(condition => {
+          if (conditionMap.has(condition.name)) {
+            // Increase probability if condition appears for multiple symptoms
+            const existing = conditionMap.get(condition.name);
+            existing.Probability = Math.min(0.95, existing.Probability + condition.probability * 0.3);
+            existing.matchedSymptoms.push(symptom);
+          } else {
+            conditionMap.set(condition.name, {
+              ConditionName: condition.name,
+              Probability: condition.probability,
+              Description: condition.description,
+              matchedSymptoms: [symptom]
+            });
+          }
+        });
+      });
+
+      // Convert to array and sort by probability
+      const results = Array.from(conditionMap.values())
+        .sort((a, b) => b.Probability - a.Probability)
+        .slice(0, 8); // Limit to top 8 results
+
+      // Add some general conditions if no specific matches found
+      if (results.length === 0) {
+        results.push(
+          { ConditionName: "General Viral Infection", Probability: 0.40, Description: "Common viral illness" },
+          { ConditionName: "Stress-Related Symptoms", Probability: 0.30, Description: "Physical manifestation of stress" },
+          { ConditionName: "Minor Illness", Probability: 0.25, Description: "Self-limiting condition" }
+        );
+      }
+
+      setConditions(results);
+    } catch (err) {
+      console.error("Error:", err);
+      setError("Something went wrong with the analysis. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const stopListening = () => {
-    if (recognitionRef.current && isListening) {
-      recognitionRef.current.stop();
+  const clearAll = () => {
+    setSymptoms([]);
+    setConditions([]);
+    setSymptom("");
+    setError("");
+  };
+
+  const styles = {
+    container: {
+      maxWidth: "800px",
+      margin: "0 auto",
+      padding: "20px",
+      background: "#ffffff",
+      minHeight: "100vh",
+      fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
+    },
+    header: {
+      textAlign: "center" as const,
+      marginBottom: "30px",
+      paddingBottom: "20px",
+      borderBottom: "2px solid #22c55e"
+    },
+    title: {
+      fontSize: "2.2rem",
+      fontWeight: "600",
+      margin: "0 0 10px 0",
+      color: "#22c55e"
+    },
+    subtitle: {
+      fontSize: "1rem",
+      color: "#6b7280",
+      margin: "0"
+    },
+    inputSection: {
+      background: "#ffffff",
+      padding: "25px",
+      borderRadius: "12px",
+      marginBottom: "25px",
+      border: "2px solid #e5e7eb",
+      boxShadow: "0 2px 8px rgba(0,0,0,0.05)"
+    },
+    inputContainer: {
+      display: "flex",
+      gap: "12px",
+      marginBottom: "20px",
+      flexWrap: "wrap" as const,
+      alignItems: "center"
+    },
+    inputWrapper: {
+      flex: "1",
+      minWidth: "250px",
+      position: "relative" as const,
+      display: "flex",
+      alignItems: "center"
+    },
+    input: {
+      width: "100%",
+      padding: "12px 50px 12px 16px",
+      border: "2px solid #e5e7eb",
+      borderRadius: "8px",
+      fontSize: "1rem",
+      outline: "none",
+      background: "#ffffff",
+      color: "#374151",
+      boxSizing: "border-box" as const,
+      transition: "border-color 0.2s ease"
+    },
+    micButton: {
+      position: "absolute" as const,
+      right: "8px",
+      top: "50%",
+      transform: "translateY(-50%)",
+      padding: "8px",
+      border: isListening ? "2px solid #ef4444" : "2px solid #22c55e",
+      borderRadius: "50%",
+      cursor: isSupported ? "pointer" : "not-allowed",
+      background: isListening ? "#fef2f2" : "#f0fdf4",
+      color: isListening ? "#ef4444" : "#22c55e",
+      fontSize: "16px",
+      width: "36px",
+      height: "36px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      transition: "all 0.3s ease",
+      opacity: isSupported ? 1 : 0.5,
+      boxShadow: isListening ? "0 0 0 4px rgba(239, 68, 68, 0.1)" : "0 0 0 4px rgba(34, 197, 94, 0.1)"
+    },
+    addButton: {
+      padding: "12px 24px",
+      border: "2px solid #22c55e",
+      borderRadius: "8px",
+      fontSize: "1rem",
+      fontWeight: "500",
+      cursor: "pointer",
+      background: "#22c55e",
+      color: "#ffffff",
+      transition: "all 0.2s ease"
+    },
+    symptomsGrid: {
+      display: "flex",
+      flexWrap: "wrap" as const,
+      gap: "8px",
+      marginBottom: "20px"
+    },
+    symptomTag: {
+      background: "#f0fdf4",
+      padding: "8px 12px",
+      borderRadius: "20px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      fontSize: "0.9rem",
+      border: "1px solid #22c55e",
+      color: "#166534"
+    },
+    removeButton: {
+      background: "#ef4444",
+      border: "none",
+      borderRadius: "50%",
+      width: "18px",
+      height: "18px",
+      cursor: "pointer",
+      color: "#fff",
+      fontSize: "12px",
+      marginLeft: "8px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center"
+    },
+    analyzeButton: {
+      width: "100%",
+      padding: "16px",
+      border: "none",
+      borderRadius: "8px",
+      fontSize: "1.1rem",
+      fontWeight: "600",
+      cursor: loading ? "not-allowed" : "pointer",
+      background: loading ? "#9ca3af" : "#22c55e",
+      color: "#ffffff",
+      transition: "all 0.2s ease",
+      opacity: loading ? 0.7 : 1,
+      marginBottom: "15px"
+    },
+    clearButton: {
+      width: "100%",
+      padding: "12px",
+      border: "2px solid #e5e7eb",
+      borderRadius: "8px",
+      fontSize: "1rem",
+      fontWeight: "500",
+      cursor: "pointer",
+      background: "#ffffff",
+      color: "#6b7280",
+      transition: "all 0.2s ease"
+    },
+    resultsSection: {
+      background: "#ffffff",
+      padding: "25px",
+      borderRadius: "12px",
+      border: "2px solid #e5e7eb",
+      marginTop: "20px",
+      boxShadow: "0 2px 8px rgba(0,0,0,0.05)"
+    },
+    resultsTitle: {
+      fontSize: "1.4rem",
+      fontWeight: "600",
+      marginBottom: "20px",
+      color: "#22c55e",
+      textAlign: "center" as const
+    },
+    conditionsList: {
+      display: "grid",
+      gap: "12px"
+    },
+    conditionItem: {
+      background: "#f9fafb",
+      padding: "16px",
+      borderRadius: "8px",
+      border: "1px solid #e5e7eb",
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center"
+    },
+    conditionName: {
+      fontSize: "1rem",
+      fontWeight: "500",
+      color: "#374151"
+    },
+    probability: {
+      fontSize: "0.9rem",
+      fontWeight: "600",
+      color: "#22c55e",
+      background: "#f0fdf4",
+      padding: "4px 12px",
+      borderRadius: "12px",
+      border: "1px solid #22c55e"
+    },
+    error: {
+      background: "#fef2f2",
+      color: "#dc2626",
+      padding: "12px",
+      borderRadius: "8px",
+      marginBottom: "20px",
+      textAlign: "center" as const,
+      border: "1px solid #fecaca"
+    },
+    disclaimer: {
+      background: "#fffbeb",
+      color: "#92400e",
+      padding: "16px",
+      borderRadius: "8px",
+      marginTop: "20px",
+      fontSize: "0.9rem",
+      textAlign: "center" as const,
+      border: "1px solid #fde68a"
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
-      <div className="max-w-2xl mx-auto bg-white p-6 rounded-lg shadow-md">
-        <h1 className="text-3xl font-extrabold text-gray-900 mb-6">AI Symptom Checker</h1>
+    <div style={styles.container}>
+      <div style={styles.header}>
+        <h1 style={styles.title}>🩺 Smart Symptom Analyzer</h1>
+        <p style={styles.subtitle}>AI-powered medical symptom analysis</p>
+      </div>
 
-        <div className="mb-4">
-          <label htmlFor="symptoms" className="block text-sm font-medium text-gray-700">Describe your symptoms:</label>
-          <div className="mt-1 relative rounded-md shadow-sm">
-            <Textarea
-              id="symptoms"
-              name="symptoms"
-              rows={5}
-              className="block w-full sm:text-sm rounded-md p-2"
-              placeholder="e.g., I have a fever, cough, and sore throat..."
-              value={symptoms}
-              onChange={(e) => setSymptoms(e.target.value)}
-            ></Textarea>
-            <div className="absolute bottom-2 right-2 flex gap-2">
-              {!speechSupported && (
-                <div className="bg-gray-400 text-white px-3 py-1 rounded text-xs">
-                  Speech not supported
-                </div>
-              )}
-              {microphonePermission === 'denied' && (
-                <div className="bg-red-400 text-white px-3 py-1 rounded text-xs">
-                  Mic access denied
-                </div>
-              )}
-              <Button
-                type="button"
-                onClick={isListening ? stopListening : handleSpeechToText}
-                disabled={!speechSupported || microphonePermission === 'denied'}
-                className={`p-2 rounded-full text-white transition-colors ${
-                  !speechSupported || microphonePermission === 'denied'
-                    ? 'bg-gray-400 cursor-not-allowed'
-                    : isListening
-                    ? 'bg-red-500 hover:bg-red-600 animate-pulse'
-                    : 'bg-blue-500 hover:bg-blue-600'
-                } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
-                title={!speechSupported ? 'Speech recognition not supported' : microphonePermission === 'denied' ? 'Microphone access required' : isListening ? 'Click to stop listening' : 'Click to start voice input'}
-              >
-                {isListening ? (
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clipRule="evenodd" />
-                  </svg>
-                ) : (
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd" />
-                  </svg>
-                )}
-              </Button>
-            </div>
+      <div style={styles.inputSection}>
+        <div style={styles.inputContainer}>
+          <div style={styles.inputWrapper}>
+            <input
+              type="text"
+              placeholder="Type or speak a symptom (e.g., fever, headache, cough)"
+              style={styles.input}
+              value={symptom}
+              onChange={(e) => setSymptom(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleAddSymptom()}
+            />
+            <button
+              onClick={handleSpeechInput}
+              style={styles.micButton}
+              className={`mic-button ${isListening ? 'listening' : ''}`}
+              disabled={!isSupported}
+              title={
+                !isSupported 
+                  ? "Speech recognition not supported" 
+                  : isListening 
+                    ? "Click to stop listening" 
+                    : "Click to start voice input"
+              }
+            >
+              {!isSupported ? "❌" : isListening ? "⏹" : "🎤"}
+            </button>
           </div>
+          <button
+            onClick={handleAddSymptom}
+            style={styles.addButton}
+            className="add-symptom-btn"
+          >
+            ➕ Add Symptom
+          </button>
         </div>
 
-        <Button
-          onClick={handleCheckSymptoms}
-          disabled={loading || !symptoms.trim()}
-          className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {loading ? 'Checking...' : 'Check Symptoms'}
-        </Button>
-
-        {error && <p className="mt-4 text-sm text-red-600">Error: {error}</p>}
-
-        {results && (results.length > 0 ? (
-          <div className="mt-6 bg-gray-50 p-4 rounded-lg border border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-800 mb-3">Possible Conditions & Recommendations:</h2>
-            <ul className="space-y-3">
-              {results.map((result, index) => (
-                <li key={index} className="bg-white p-3 rounded-md shadow-sm border border-gray-100">
-                  <p className="font-medium text-gray-900">Condition: {result.condition}</p>
-                  <p className="text-gray-700">Recommendation: {result.recommendation}</p>
-                </li>
-              ))}
-            </ul>
+        {isListening && (
+          <div style={{
+            background: "#f0fdf4",
+            border: "1px solid #22c55e",
+            borderRadius: "8px",
+            padding: "8px 12px",
+            marginBottom: "15px",
+            color: "#166534",
+            fontSize: "0.9rem",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px"
+          }}>
+            <span style={{ animation: "pulse-dot 1.5s infinite" }}>🎤</span>
+            Listening... Speak now!
           </div>
-        ) : (
-          <p className="mt-6 text-gray-600">No conditions identified based on your symptoms. Please consult a doctor for a professional diagnosis.</p>
-        ))}
+        )}
+
+        {symptoms.length > 0 && (
+          <div>
+            <p style={{ fontSize: "1rem", fontWeight: "600", marginBottom: "15px" }}>
+              Selected Symptoms ({symptoms.length}):
+            </p>
+            <div style={styles.symptomsGrid}>
+              {symptoms.map((s, i) => (
+                <div key={i} style={styles.symptomTag}>
+                  <span>{s}</span>
+                  <button
+                    onClick={() => removeSymptom(i)}
+                    style={styles.removeButton}
+                    title="Remove symptom"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <div style={styles.error}>
+            ⚠️ {error}
+          </div>
+        )}
+
+        <button
+          onClick={analyzeSymptoms}
+          style={styles.analyzeButton}
+          disabled={loading || symptoms.length === 0}
+          className="analyze-btn"
+        >
+          {loading ? "🔄 Analyzing..." : "🔍 Analyze Symptoms"}
+        </button>
+
+        {(symptoms.length > 0 || conditions.length > 0) && (
+          <button
+            onClick={clearAll}
+            style={styles.clearButton}
+            className="clear-btn"
+          >
+            🗑️ Clear All
+          </button>
+        )}
       </div>
+
+      {conditions.length > 0 && (
+        <div style={styles.resultsSection}>
+          <h2 style={styles.resultsTitle}>📋 Possible Conditions</h2>
+          <div style={styles.conditionsList}>
+            {conditions.slice(0, 10).map((c, i) => (
+              <div key={i} style={styles.conditionItem}>
+                <span style={styles.conditionName}>
+                  {c.ConditionName}
+                </span>
+                <span style={styles.probability}>
+                  {c.Probability ? `${(c.Probability * 100).toFixed(1)}%`  : 'N/A'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div style={styles.disclaimer}>
+        ⚠️ <strong>Disclaimer:</strong> This tool is for informational purposes only and should not replace professional medical advice. Always consult with a healthcare provider for proper diagnosis and treatment.
+      </div>
+
+      <style>
+        {`
+          .add-symptom-btn:hover {
+            background: #16a34a !important;
+            transform: translateY(-1px);
+          }
+          
+          .analyze-btn:hover:not(:disabled) {
+            background: #16a34a !important;
+            transform: translateY(-1px);
+          }
+          
+          .clear-btn:hover {
+            background: #f3f4f6 !important;
+            border-color: #d1d5db !important;
+          }
+          
+          .mic-button:hover:not(:disabled) {
+            transform: translateY(-50%) scale(1.1);
+            box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.2) !important;
+          }
+          
+          .mic-button:active:not(:disabled) {
+            transform: translateY(-50%) scale(0.95);
+          }
+          
+          .mic-button.listening {
+            animation: pulse-mic 1.5s infinite;
+          }
+          
+          @keyframes pulse-mic {
+            0% { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1); }
+            50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0.2); }
+            100% { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1); }
+          }
+          
+          @keyframes pulse-dot {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.8; }
+          }
+          
+          input:focus {
+            border-color: #22c55e !important;
+            box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1) !important;
+          }
+          
+          @media (max-width: 768px) {
+            .input-container {
+              flex-direction: column;
+            }
+            
+            .input-wrapper {
+              min-width: 100%;
+            }
+          }
+        `}
+      </style>
     </div>
   );
 };
