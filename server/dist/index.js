@@ -2,28 +2,19 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { register, login, getMe } from "./auth/auth.controller.js";
-<<<<<<< HEAD
-import { authenticateToken } from "./auth/auth.middleware.js";
-=======
 import { authenticateToken, authorizeRoles } from "./auth/auth.middleware.js";
->>>>>>> c3e3419378a6f0adb991f5e7117639f4ed97f144
-import { getMyAppointments, createAppointment, getPendingAppointments, approveAppointment, rejectAppointment, completeAppointment, getTodaysConfirmedAppointmentsForDoctor, getAppointmentHistoryForDoctor } from "./appointments/appointments.controller.js";
+import { getMyAppointments, createAppointment, getPendingAppointments, approveAppointment, rejectAppointment, completeAppointment, getTodaysConfirmedAppointmentsForDoctor, getAppointmentHistoryForDoctor, getAppointmentByIdForDoctor } from "./appointments/appointments.controller.js";
 import { getAvailableDoctors, updateMyAvailabilityStatus, getMyDoctorProfile } from "./doctors/doctors.controller.js";
 import { getMyMedicalRecords, createMedicalRecord } from "./medicalRecords/medicalRecords.controller.js";
 import { checkSymptoms } from "./symptoms/symptoms.controller.js";
-<<<<<<< HEAD
-import { getPharmacies, getPharmacyStock, updateStockStatus, searchMedicineStock } from "./pharmacy/pharmacy.controller.js"; // Import pharmacy controllers
-=======
-import { getPharmacies, getPharmacyStock, updateStockStatus, getInventory, createBatch, getLowStockAlerts } from "./pharmacy/pharmacy.controller.js"; // Import pharmacy controllers
-// @ts-ignore: compiled output will be .js, matching other controller imports
+import { createBatch, getInventory, getLowStockAlerts, getPharmacies, getPharmacyStock, searchMedicineStock, updateStockStatus, getAllMedicines, getPharmacyLocation, updatePharmacyLocation, getPharmaciesForPatients } from "./pharmacy/pharmacy.controller.js"; // Import pharmacy controllers
 import { listPrescriptions, updatePrescriptionStatus } from "./pharmacy/prescriptions.controller.js";
-import { getAllUsers, getAllDoctors as adminGetAllDoctors, getAllPharmacists, getAppointmentsSummary, getOverview } from "./admin/admin.controller.js";
->>>>>>> c3e3419378a6f0adb991f5e7117639f4ed97f144
+import { getAllPharmacists, getAllUsers, getAllDoctors, getAppointmentsSummary, getOverview } from "./admin/admin.controller.js";
 dotenv.config();
 const app = express();
 app.use(express.json());
 app.use(cors({
-    origin: ["http://localhost:5173"],
+    origin: ["http://localhost:5173", "http://localhost:5174"],
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: [
@@ -54,24 +45,31 @@ app.get("/api/appointments/history", authenticateToken, getAppointmentHistoryFor
 app.put("/api/appointments/:id/approve", authenticateToken, approveAppointment);
 app.put("/api/appointments/:id/reject", authenticateToken, rejectAppointment);
 app.put("/api/appointments/:id/complete", authenticateToken, completeAppointment);
+// Keep the generic route LAST to avoid shadowing specific routes above
+app.get("/api/appointments/:id", authenticateToken, getAppointmentByIdForDoctor);
 app.put("/api/doctors/me/status", authenticateToken, updateMyAvailabilityStatus);
 app.post("/api/medical-records", authenticateToken, createMedicalRecord);
 // Public Pharmacy Routes (for map, no auth needed to view)
 app.get("/api/pharmacies", getPharmacies);
 app.get("/api/pharmacies/search", searchMedicineStock); // Public medicine search
+app.get("/api/pharmacies/for-patients", getPharmaciesForPatients); // New: Get pharmacies for patients with location data
+app.get("/api/medicines", getAllMedicines); // New: Get all medicines
 // Protected Pharmacist Routes
 app.get("/api/pharmacy/stock", authenticateToken, getPharmacyStock); // Can be filtered by medicineName
 app.put("/api/pharmacy/stock/:stockId", authenticateToken, updateStockStatus);
 app.get("/api/pharmacy/inventory", authenticateToken, getInventory);
 app.post("/api/pharmacy/batches", authenticateToken, createBatch);
 app.get("/api/pharmacy/alerts/low-stock", authenticateToken, getLowStockAlerts);
+// Pharmacy Location Management Routes
+app.get("/api/pharmacy/location", authenticateToken, getPharmacyLocation); // Get pharmacy location for pharmacist
+app.put("/api/pharmacy/location", authenticateToken, updatePharmacyLocation); // Update pharmacy location
 // Prescriptions for pharmacist
 app.get("/api/pharmacy/prescriptions", authenticateToken, listPrescriptions);
 app.patch("/api/pharmacy/prescriptions/:id/status", authenticateToken, updatePrescriptionStatus);
 // Admin Routes
 app.get("/api/admin/overview", authenticateToken, authorizeRoles('ADMIN'), getOverview);
 app.get("/api/admin/users", authenticateToken, authorizeRoles('ADMIN'), getAllUsers);
-app.get("/api/admin/doctors", authenticateToken, authorizeRoles('ADMIN'), adminGetAllDoctors);
+app.get("/api/admin/doctors", authenticateToken, authorizeRoles('ADMIN'), getAllDoctors);
 app.get("/api/admin/pharmacists", authenticateToken, authorizeRoles('ADMIN'), getAllPharmacists);
 app.get("/api/admin/appointments/summary", authenticateToken, authorizeRoles('ADMIN'), getAppointmentsSummary);
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;

@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import { Role } from '@prisma/client';
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
 export const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
@@ -9,7 +10,8 @@ export const authenticateToken = (req, res, next) => {
         if (err)
             return res.sendStatus(403); // Invalid token
         req.userId = user.userId;
-        req.userRole = user.role;
+        // Ensure role is a valid Role enum member; fallback: treat as undefined if invalid
+        req.userRole = Object.values(Role).includes(user.role) ? user.role : undefined;
         next();
     });
 };

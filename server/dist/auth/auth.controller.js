@@ -3,22 +3,31 @@ import jwt from 'jsonwebtoken';
 import { PrismaClient, Role } from '@prisma/client';
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret'; // Use environment variable for secret
+// Hardcoded admin email (can be overridden via env for flexibility)
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@telmed.com';
 // Register a new user
 export const register = async (req, res) => {
     const { email, password, role, firstName, lastName, phone, dob, gender, address, bloodGroup, emergencyContact, specialization, qualifications, experienceYears, } = req.body;
     try {
+        // Prevent registering as ADMIN via signup
+        if (role === Role.ADMIN) {
+            return res.status(400).json({ error: 'Registration as ADMIN is not allowed' });
+        }
+        // Determine safe role (default to PATIENT if not provided/invalid)
+        const allowedRoles = [Role.PATIENT, Role.DOCTOR, Role.PHARMACIST];
+        const safeRole = allowedRoles.includes(role) ? role : Role.PATIENT;
         const hashedPassword = await bcrypt.hash(password, 10);
         const user = await prisma.user.create({
             data: {
                 email,
                 password: hashedPassword,
-                role,
+                role: safeRole,
                 firstName,
                 lastName,
                 phone,
             },
         });
-        if (role === Role.PATIENT) {
+        if (safeRole === Role.PATIENT) {
             await prisma.patientProfile.create({
                 data: {
                     userId: user.id,
@@ -30,7 +39,7 @@ export const register = async (req, res) => {
                 },
             });
         }
-        else if (role === Role.DOCTOR) {
+        else if (safeRole === Role.DOCTOR) {
             await prisma.doctorProfile.create({
                 data: {
                     userId: user.id,
@@ -40,15 +49,10 @@ export const register = async (req, res) => {
                 },
             });
         }
-        else if (role === Role.PHARMACIST) {
+        else if (safeRole === Role.PHARMACIST) {
             // NOTE: Schema uses DoctorProfile for pharmacist relationship (Pharmacy.pharmacist -> DoctorProfile)
-<<<<<<< HEAD
-            // To keep routes working without schema changes, create a DoctorProfile entry for pharmacists too.
-            await prisma.doctorProfile.create({
-=======
             // 1) Create a DoctorProfile entry for the pharmacist
             const pharmacistProfile = await prisma.doctorProfile.create({
->>>>>>> c3e3419378a6f0adb991f5e7117639f4ed97f144
                 data: {
                     userId: user.id,
                     specialization: specialization || 'Pharmacist',
@@ -56,8 +60,6 @@ export const register = async (req, res) => {
                     experienceYears: parseInt(experienceYears || '0'),
                 },
             });
-<<<<<<< HEAD
-=======
             // 2) Auto-create a Pharmacy and assign to this pharmacist to avoid unassigned errors
             const pharmacyName = `${firstName ?? 'New'} ${lastName ?? 'Pharmacist'} Pharmacy`;
             await prisma.pharmacy.create({
@@ -69,7 +71,6 @@ export const register = async (req, res) => {
                     pharmacistId: pharmacistProfile.id,
                 },
             });
->>>>>>> c3e3419378a6f0adb991f5e7117639f4ed97f144
         }
         res.status(201).json({ message: 'User registered successfully' });
     }
@@ -90,8 +91,10 @@ export const login = async (req, res) => {
         if (!isPasswordValid) {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
-        const token = jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET, { expiresIn: '1h' });
-        res.json({ token, role: user.role });
+        // If login email matches the hardcoded admin email, force ADMIN role
+        const effectiveRole = email === ADMIN_EMAIL ? Role.ADMIN : user.role;
+        const token = jwt.sign({ userId: user.id, role: effectiveRole }, JWT_SECRET, { expiresIn: '1h' });
+        res.json({ token, role: effectiveRole });
     }
     catch (error) {
         console.error(error);
@@ -110,7 +113,9 @@ export const getMe = async (req, res) => {
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
-        res.json(user);
+        // Ensure admin email reflects ADMIN role in /me response
+        const responseUser = user.email === ADMIN_EMAIL ? { ...user, role: Role.ADMIN } : user;
+        res.json(responseUser);
     }
     catch (error) {
         console.error(error);

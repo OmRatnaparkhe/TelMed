@@ -5,7 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Bell, ChevronDown, LogOut, Package, Users, Activity, Clock, CheckCircle, XCircle, Pill, AlertTriangle } from 'lucide-react';
+import { Bell, ChevronDown, LogOut, Package, Users, Activity, Clock, CheckCircle, XCircle, Pill, AlertTriangle, MapPin, Home, BarChart3 } from 'lucide-react';
+import LocationSetup from '../components/pharmacist/LocationSetup';
+import InventoryManagement from '../components/pharmacist/InventoryManagement';
+import ProfileManagement from '../components/pharmacist/ProfileManagement';
 
 interface PharmacistData {
   name: string;
@@ -50,6 +53,7 @@ const PharmacistDashboard: React.FC = () => {
   const [alerts, setAlerts] = useState<LowStockAlertResponse | null>(null);
   const [prescriptions, setPrescriptions] = useState<PrescriptionItem[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'inventory' | 'location' | 'profile'>('dashboard');
 
   const loadData = async () => {
     setLoading(true);
@@ -168,6 +172,58 @@ const PharmacistDashboard: React.FC = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        {/* Tab Navigation */}
+        <div className="mb-8">
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex space-x-8">
+              <button
+                onClick={() => setActiveTab('dashboard')}
+                className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'dashboard'
+                    ? 'border-indigo-500 text-indigo-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <Home className="inline-block w-4 h-4 mr-2" />
+                Dashboard
+              </button>
+              <button
+                onClick={() => setActiveTab('inventory')}
+                className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'inventory'
+                    ? 'border-indigo-500 text-indigo-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <Package className="inline-block w-4 h-4 mr-2" />
+                Inventory
+              </button>
+              <button
+                onClick={() => setActiveTab('location')}
+                className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'location'
+                    ? 'border-indigo-500 text-indigo-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <MapPin className="inline-block w-4 h-4 mr-2" />
+                Location Setup
+              </button>
+              <button
+                onClick={() => setActiveTab('profile')}
+                className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'profile'
+                    ? 'border-indigo-500 text-indigo-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <BarChart3 className="inline-block w-4 h-4 mr-2" />
+                Profile
+              </button>
+            </nav>
+          </div>
+        </div>
+
         {loading && (
           <div className="flex items-center justify-center py-10">
             <div className="animate-spin rounded-full h-10 w-10 border-4 border-gray-200 border-t-primary"></div>
@@ -187,30 +243,32 @@ const PharmacistDashboard: React.FC = () => {
             </Card>
           </div>
         )}
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending Prescriptions</CardTitle>
-              <Package className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{prescriptions.filter(p => p.status === 'PENDING').length}</div>
-              <p className="text-xs text-muted-foreground">Awaiting dispense</p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Inventory Items</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{inventory.length}</div>
-              <p className="text-xs text-muted-foreground">Tracked medicines</p>
-            </CardContent>
-          </Card>
-          
+        {activeTab === 'dashboard' && (
+          <>
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Pending Prescriptions</CardTitle>
+                  <Package className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{prescriptions.filter(p => p.status === 'PENDING').length}</div>
+                  <p className="text-xs text-muted-foreground">Awaiting dispense</p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Inventory Items</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{inventory.length}</div>
+                  <p className="text-xs text-muted-foreground">Tracked medicines</p>
+                </CardContent>
+              </Card>
+              
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Low/Out of Stock</CardTitle>
@@ -285,6 +343,23 @@ const PharmacistDashboard: React.FC = () => {
             )}
           </CardContent>
         </Card>
+      </> 
+    )}
+    {activeTab === 'inventory' && (
+      <div className="bg-white rounded-lg shadow-sm p-4">
+        <InventoryManagement />
+      </div>
+    )}
+    {activeTab === 'location' && (
+      <div className="bg-white rounded-lg shadow-sm p-4">
+        <LocationSetup />
+      </div>
+    )}
+    {activeTab === 'profile' && (
+      <div className="bg-white rounded-lg shadow-sm p-4">
+        <ProfileManagement />
+      </div>
+    )}
       </main>
     </div>
   );

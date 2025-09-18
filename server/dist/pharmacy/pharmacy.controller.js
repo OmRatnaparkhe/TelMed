@@ -1,5 +1,35 @@
 import { PrismaClient, Role, StockStatus } from '@prisma/client';
+import { getPharmacyIdForPharmacist } from '../lib/pharmacyUtils.js';
 const prisma = new PrismaClient();
+// Helper: resolve pharmacist's assigned pharmacy; auto-create if missing
+async function resolveOrCreatePharmacyIdForPharmacist(userId) {
+    const profile = await prisma.doctorProfile.findUnique({
+        where: { userId },
+        include: { user: { select: { firstName: true, lastName: true } } },
+    });
+    if (!profile)
+        throw new Error('PHARMACIST_PROFILE_NOT_FOUND');
+    const existing = await prisma.pharmacy.findFirst({ where: { pharmacistId: profile.id }, select: { id: true } });
+    if (existing)
+        return existing.id;
+    const nameParts = [];
+    if (profile.user?.firstName)
+        nameParts.push(profile.user.firstName);
+    if (profile.user?.lastName)
+        nameParts.push(profile.user.lastName);
+    const pharmacyName = (nameParts.join(' ') || 'New Pharmacist') + ' Pharmacy';
+    const created = await prisma.pharmacy.create({
+        data: {
+            name: pharmacyName,
+            address: 'N/A',
+            latitude: 0,
+            longitude: 0,
+            pharmacistId: profile.id,
+        },
+        select: { id: true },
+    });
+    return created.id;
+}
 export const getPharmacies = async (_req, res) => {
     try {
         const pharmacies = await prisma.pharmacy.findMany();
@@ -43,75 +73,45 @@ export const getPharmacies = async (_req, res) => {
 };
 // New: Aggregated inventory view with optional search, status filter, and expiring soon filter
 export const getInventory = async (req, res) => {
-    const { search, status, expiringInDays } = req.query;
     if (!req.userId || req.userRole !== Role.PHARMACIST) {
         return res.status(403).json({ error: 'Access denied' });
     }
     try {
-        const profile = await prisma.doctorProfile.findUnique({
-            where: { userId: req.userId },
-            select: { id: true, managedPharmacies: { select: { id: true } } },
+        const pharmacyId = await getPharmacyIdForPharmacist(req.userId);
+        const stocks = await prisma.pharmacyStock.findMany({
+            where: { pharmacyId },
+            include: { medicine: true },
         });
-        if (!profile || profile.managedPharmacies.length === 0) {
-            return res.status(404).json({ error: 'Pharmacist not assigned to a pharmacy' });
-        }
-        const pharmacyId = profile.managedPharmacies[0].id;
-        const whereMedicine = {};
-        if (search && search.trim()) {
-            whereMedicine.OR = [
-                { name: { contains: search, mode: 'insensitive' } },
-                { genericName: { contains: search, mode: 'insensitive' } },
-            ];
-        }
-        // Fetch stock status and batches
-        const [stocks, batches] = await Promise.all([
-            prisma.pharmacyStock.findMany({
-                where: { pharmacyId, ...(status ? { stockStatus: status } : {}) },
-                include: { medicine: true },
-            }),
-            prisma.medicineBatch.findMany({
-                where: {
-                    pharmacyId,
-                    medicine: whereMedicine,
-                    ...(expiringInDays
-                        ? { expiryDate: { lte: new Date(Date.now() + Number(expiringInDays) * 24 * 60 * 60 * 1000) } }
-                        : {}),
-                },
-                include: { medicine: true },
-                orderBy: { expiryDate: 'asc' },
-            }),
-        ]);
-        // Aggregate quantities per medicine and attach soonest expiry
+        const medicineIds = stocks.map(s => s.medicineId);
+        const batches = await prisma.medicineBatch.findMany({
+            where: {
+                pharmacyId,
+                medicineId: { in: medicineIds },
+            },
+        });
         const batchesByMedicine = new Map();
-        for (const b of batches) {
-            const entry = batchesByMedicine.get(b.medicineId) || { totalQty: 0, soonestExpiry: undefined };
-            entry.totalQty += b.quantity;
-            if (!entry.soonestExpiry || b.expiryDate < entry.soonestExpiry)
-                entry.soonestExpiry = b.expiryDate;
-            batchesByMedicine.set(b.medicineId, entry);
+        for (const batch of batches) {
+            const entry = batchesByMedicine.get(batch.medicineId) || { totalQty: 0, soonestExpiry: undefined };
+            entry.totalQty += batch.quantity;
+            if (!entry.soonestExpiry || batch.expiryDate < entry.soonestExpiry) {
+                entry.soonestExpiry = batch.expiryDate;
+            }
+            batchesByMedicine.set(batch.medicineId, entry);
         }
-        const result = stocks
-            .filter((s) => {
-            if (!search)
-                return true;
-            const med = s.medicine;
-            const q = search.toLowerCase();
-            return med.name.toLowerCase().includes(q) || (med.genericName?.toLowerCase().includes(q) ?? false);
-        })
-            .map((s) => ({
-            stockId: s.id,
-            medicineId: s.medicineId,
-            name: s.medicine.name,
-            genericName: s.medicine.genericName,
-            status: s.stockStatus,
-            totalQuantity: batchesByMedicine.get(s.medicineId)?.totalQty ?? 0,
-            soonestExpiry: batchesByMedicine.get(s.medicineId)?.soonestExpiry ?? null,
+        const result = stocks.map(stock => ({
+            stockId: stock.id,
+            medicineId: stock.medicineId,
+            name: stock.medicine.name,
+            genericName: stock.medicine.genericName,
+            status: stock.stockStatus,
+            totalQuantity: batchesByMedicine.get(stock.medicineId)?.totalQty ?? 0,
+            soonestExpiry: batchesByMedicine.get(stock.medicineId)?.soonestExpiry?.toISOString() ?? null,
         }));
         res.json(result);
     }
     catch (error) {
         console.error(error);
-        res.status(500).json({ error: 'Error fetching inventory' });
+        res.status(500).json({ error: error.message || 'Error fetching inventory' });
     }
 };
 // New: Create a batch with expiry for a medicine in the pharmacist's pharmacy
@@ -121,17 +121,10 @@ export const createBatch = async (req, res) => {
     }
     const { medicineId, batchNumber, quantity, expiryDate } = req.body;
     if (!medicineId || !batchNumber || !quantity || !expiryDate) {
-        return res.status(400).json({ error: 'medicineId, batchNumber, quantity, and expiryDate are required' });
+        return res.status(400).json({ error: 'Missing required fields' });
     }
     try {
-        const profile = await prisma.doctorProfile.findUnique({
-            where: { userId: req.userId },
-            select: { id: true, managedPharmacies: { select: { id: true } } },
-        });
-        if (!profile || profile.managedPharmacies.length === 0) {
-            return res.status(404).json({ error: 'Pharmacist not assigned to a pharmacy' });
-        }
-        const pharmacyId = profile.managedPharmacies[0].id;
+        const pharmacyId = await getPharmacyIdForPharmacist(req.userId);
         const batch = await prisma.medicineBatch.create({
             data: {
                 pharmacyId,
@@ -145,7 +138,7 @@ export const createBatch = async (req, res) => {
     }
     catch (error) {
         console.error(error);
-        res.status(500).json({ error: 'Error creating batch' });
+        res.status(500).json({ error: error.message || 'Error creating batch' });
     }
 };
 // New: Low stock and expiring soon alerts
@@ -154,23 +147,21 @@ export const getLowStockAlerts = async (req, res) => {
         return res.status(403).json({ error: 'Access denied' });
     }
     try {
-        const profile = await prisma.doctorProfile.findUnique({
-            where: { userId: req.userId },
-            select: { id: true, managedPharmacies: { select: { id: true } } },
-        });
-        if (!profile || profile.managedPharmacies.length === 0) {
-            return res.status(404).json({ error: 'Pharmacist not assigned to a pharmacy' });
-        }
-        const pharmacyId = profile.managedPharmacies[0].id;
+        const pharmacyId = await getPharmacyIdForPharmacist(req.userId);
+        const thirtyDaysFromNow = new Date();
+        thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
         const [lowStock, expiringSoon] = await Promise.all([
             prisma.pharmacyStock.findMany({
-                where: { pharmacyId, stockStatus: { in: [StockStatus.LOW_STOCK, StockStatus.OUT_OF_STOCK] } },
+                where: {
+                    pharmacyId,
+                    stockStatus: { in: [StockStatus.LOW_STOCK, StockStatus.OUT_OF_STOCK] },
+                },
                 include: { medicine: true },
             }),
             prisma.medicineBatch.findMany({
                 where: {
                     pharmacyId,
-                    expiryDate: { lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) }, // next 30 days
+                    expiryDate: { lte: thirtyDaysFromNow },
                 },
                 include: { medicine: true },
                 orderBy: { expiryDate: 'asc' },
@@ -180,7 +171,7 @@ export const getLowStockAlerts = async (req, res) => {
     }
     catch (error) {
         console.error(error);
-        res.status(500).json({ error: 'Error fetching alerts' });
+        res.status(500).json({ error: error.message || 'Error fetching alerts' });
     }
 };
 export const getPharmacyStock = async (req, res) => {
@@ -189,18 +180,12 @@ export const getPharmacyStock = async (req, res) => {
         return res.status(403).json({ error: 'Access denied' });
     }
     try {
-        const doctorProfile = await prisma.doctorProfile.findUnique({
-            where: { userId: req.userId },
-            select: { id: true, managedPharmacies: { select: { id: true } } },
-        });
-        if (!doctorProfile || doctorProfile.managedPharmacies.length === 0) {
-            return res.status(404).json({ error: 'Pharmacist not assigned to a pharmacy' });
-        }
-        const pharmacyId = doctorProfile.managedPharmacies[0].id; // Changed to managedPharmacies
+        const pharmacyId = await getPharmacyIdForPharmacist(req.userId);
         const whereClause = { pharmacyId };
         if (medicineName) {
             whereClause.medicine = {
-                name: { contains: medicineName, mode: 'insensitive' },
+                // SQLite does not support case-insensitive mode in Prisma filters
+                name: { contains: medicineName },
             };
         }
         const pharmacyStock = await prisma.pharmacyStock.findMany({
@@ -225,14 +210,20 @@ export const searchMedicineStock = async (req, res) => {
     if (!medicineName) {
         return res.status(400).json({ error: 'Medicine name is required' });
     }
+    console.log(`Searching for medicine: ${medicineName}`);
+    // First, try to connect to the database
+    let pharmacyStock = [];
+    let useDatabase = true;
     try {
-        console.log(`Searching for medicine: ${medicineName}`);
-        const pharmacyStock = await prisma.pharmacyStock.findMany({
+        // Test database connection
+        await prisma.$connect();
+        pharmacyStock = await prisma.pharmacyStock.findMany({
             where: {
                 medicine: {
                     OR: [
-                        { name: { contains: medicineName, mode: 'insensitive' } },
-                        { genericName: { contains: medicineName, mode: 'insensitive' } }
+                        // SQLite does not support case-insensitive mode in Prisma filters
+                        { name: { contains: medicineName } },
+                        { genericName: { contains: medicineName } }
                     ]
                 },
                 stockStatus: 'IN_STOCK', // Only show pharmacies with stock
@@ -256,10 +247,20 @@ export const searchMedicineStock = async (req, res) => {
             medicine: stock.medicine,
             stockStatus: stock.stockStatus,
         }));
-        res.json(pharmaciesWithStock);
+        // If we have results, return them
+        if (pharmaciesWithStock.length > 0) {
+            return res.json(pharmaciesWithStock);
+        }
+        // If no results from database, fall through to mock data
+        useDatabase = false;
     }
     catch (error) {
-        console.error('Database error, returning mock data:', error);
+        console.error('Database error, using mock data:', error);
+        useDatabase = false;
+    }
+    // Use mock data when database is unavailable or returns no results
+    if (!useDatabase) {
+        console.log('Using mock data for search results');
         // Return mock data when database is unavailable
         const searchTerm = medicineName.toLowerCase();
         const mockData = [];
@@ -320,7 +321,8 @@ export const searchMedicineStock = async (req, res) => {
                 stockStatus: 'IN_STOCK',
             });
         }
-        res.json(mockData);
+        console.log(`Returning ${mockData.length} mock results for search: ${medicineName}`);
+        return res.json(mockData);
     }
 };
 export const updateStockStatus = async (req, res) => {
@@ -330,23 +332,18 @@ export const updateStockStatus = async (req, res) => {
     const { stockId } = req.params;
     const { stockStatus } = req.body;
     if (!Object.values(StockStatus).includes(stockStatus)) {
-        return res.status(400).json({ error: 'Invalid stock status provided' });
+        return res.status(400).json({ error: 'Invalid stock status' });
     }
     try {
-        const doctorProfile = await prisma.doctorProfile.findUnique({
-            where: { userId: req.userId },
-            select: { id: true, managedPharmacies: { select: { id: true } } },
+        const pharmacyId = await getPharmacyIdForPharmacist(req.userId);
+        const stockItem = await prisma.pharmacyStock.findFirst({
+            where: {
+                id: stockId,
+                pharmacyId: pharmacyId, // Ensure item belongs to the pharmacist's pharmacy
+            },
         });
-        if (!doctorProfile || doctorProfile.managedPharmacies.length === 0) {
-            return res.status(404).json({ error: 'Pharmacist not assigned to a pharmacy' });
-        }
-        const pharmacyId = doctorProfile.managedPharmacies[0].id; // Changed to managedPharmacies
-        const stockItem = await prisma.pharmacyStock.findUnique({
-            where: { id: stockId },
-            select: { pharmacyId: true },
-        });
-        if (!stockItem || stockItem.pharmacyId !== pharmacyId) {
-            return res.status(404).json({ error: 'Stock item not found or not in assigned pharmacy' });
+        if (!stockItem) {
+            return res.status(404).json({ error: 'Stock item not found in your pharmacy' });
         }
         const updatedStock = await prisma.pharmacyStock.update({
             where: { id: stockId },
@@ -356,6 +353,300 @@ export const updateStockStatus = async (req, res) => {
     }
     catch (error) {
         console.error(error);
-        res.status(500).json({ error: 'Error updating stock status' });
+        res.status(500).json({ error: error.message || 'Error updating stock status' });
     }
 };
+export const getAllMedicines = async (_req, res) => {
+    try {
+        const medicines = await prisma.medicine.findMany({
+            select: { id: true, name: true, genericName: true },
+            orderBy: { name: 'asc' },
+        });
+        res.json(medicines);
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Error fetching medicines' });
+    }
+};
+// Get pharmacy location details for the authenticated pharmacist
+export const getPharmacyLocation = async (req, res) => {
+    if (!req.userId || req.userRole !== Role.PHARMACIST) {
+        return res.status(403).json({ error: 'Access denied' });
+    }
+    try {
+        // Get pharmacist profile
+        const pharmacistProfile = await prisma.pharmacistProfile.findUnique({
+            where: { userId: req.userId },
+            include: {
+                pharmacy: true,
+                user: { select: { firstName: true, lastName: true, email: true, phone: true } }
+            }
+        });
+        if (!pharmacistProfile) {
+            return res.status(404).json({ error: 'Pharmacist profile not found' });
+        }
+        // If no pharmacy exists, return default structure
+        if (!pharmacistProfile.pharmacy) {
+            const defaultData = {
+                id: null,
+                name: '',
+                address: '',
+                city: '',
+                state: '',
+                pincode: '',
+                latitude: 0,
+                longitude: 0,
+                phone: pharmacistProfile.user.phone || '',
+                email: pharmacistProfile.user.email || '',
+                operatingHours: {
+                    monday: { open: '09:00', close: '21:00', isOpen: true },
+                    tuesday: { open: '09:00', close: '21:00', isOpen: true },
+                    wednesday: { open: '09:00', close: '21:00', isOpen: true },
+                    thursday: { open: '09:00', close: '21:00', isOpen: true },
+                    friday: { open: '09:00', close: '21:00', isOpen: true },
+                    saturday: { open: '09:00', close: '21:00', isOpen: true },
+                    sunday: { open: '10:00', close: '20:00', isOpen: true },
+                },
+                services: [],
+                isActive: true,
+            };
+            return res.json(defaultData);
+        }
+        // Parse operating hours and services from JSON fields
+        const defaultOperatingHours = {
+            monday: { open: '09:00', close: '21:00', isOpen: true },
+            tuesday: { open: '09:00', close: '21:00', isOpen: true },
+            wednesday: { open: '09:00', close: '21:00', isOpen: true },
+            thursday: { open: '09:00', close: '21:00', isOpen: true },
+            friday: { open: '09:00', close: '21:00', isOpen: true },
+            saturday: { open: '09:00', close: '21:00', isOpen: true },
+            sunday: { open: '10:00', close: '20:00', isOpen: true },
+        };
+        const operatingHours = pharmacistProfile.pharmacy.operatingHours || defaultOperatingHours;
+        const services = pharmacistProfile.pharmacy.services || [];
+        const response = {
+            id: pharmacistProfile.pharmacy.id,
+            name: pharmacistProfile.pharmacy.name,
+            address: pharmacistProfile.pharmacy.address,
+            city: pharmacistProfile.pharmacy.city || '',
+            state: pharmacistProfile.pharmacy.state || '',
+            pincode: pharmacistProfile.pharmacy.pincode || '',
+            latitude: pharmacistProfile.pharmacy.latitude,
+            longitude: pharmacistProfile.pharmacy.longitude,
+            phone: pharmacistProfile.pharmacy.phone || pharmacistProfile.user.phone || '',
+            email: pharmacistProfile.pharmacy.email || pharmacistProfile.user.email || '',
+            operatingHours,
+            services,
+            isActive: pharmacistProfile.pharmacy.isActive,
+        };
+        res.json(response);
+    }
+    catch (error) {
+        console.error('Error fetching pharmacy location:', error);
+        res.status(500).json({ error: 'Error fetching pharmacy location' });
+    }
+};
+// Update pharmacy location for the authenticated pharmacist
+export const updatePharmacyLocation = async (req, res) => {
+    if (!req.userId || req.userRole !== Role.PHARMACIST) {
+        return res.status(403).json({ error: 'Access denied' });
+    }
+    try {
+        const { name, address, city, state, pincode, latitude, longitude, phone, email, operatingHours, services, isActive = true, } = req.body;
+        // Validate required fields
+        if (!name || !address || !city || !state || !pincode || latitude === undefined || longitude === undefined) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+        // Get pharmacist profile
+        const pharmacistProfile = await prisma.pharmacistProfile.findUnique({
+            where: { userId: req.userId },
+        });
+        if (!pharmacistProfile) {
+            return res.status(404).json({ error: 'Pharmacist profile not found' });
+        }
+        // Check if pharmacy exists
+        const existingPharmacy = await prisma.pharmacy.findUnique({
+            where: { pharmacistId: pharmacistProfile.id },
+        });
+        let pharmacy;
+        const pharmacyData = {
+            name,
+            address,
+            city,
+            state,
+            pincode,
+            latitude: parseFloat(latitude.toString()),
+            longitude: parseFloat(longitude.toString()),
+            phone: phone || null,
+            email: email || null,
+            operatingHours: operatingHours || null,
+            services: services || null,
+            isActive,
+        };
+        if (existingPharmacy) {
+            // Update existing pharmacy
+            pharmacy = await prisma.pharmacy.update({
+                where: { id: existingPharmacy.id },
+                data: pharmacyData,
+            });
+        }
+        else {
+            // Create new pharmacy
+            pharmacy = await prisma.pharmacy.create({
+                data: {
+                    ...pharmacyData,
+                    pharmacistId: pharmacistProfile.id,
+                },
+            });
+            // Update pharmacist profile to link to the new pharmacy
+            await prisma.pharmacistProfile.update({
+                where: { id: pharmacistProfile.id },
+                data: { pharmacyId: pharmacy.id },
+            });
+        }
+        res.json({
+            message: 'Pharmacy location updated successfully',
+            pharmacy: {
+                id: pharmacy.id,
+                name: pharmacy.name,
+                address: pharmacy.address,
+                city: pharmacy.city,
+                state: pharmacy.state,
+                pincode: pharmacy.pincode,
+                latitude: pharmacy.latitude,
+                longitude: pharmacy.longitude,
+                phone: pharmacy.phone,
+                email: pharmacy.email,
+                operatingHours: pharmacy.operatingHours,
+                services: pharmacy.services,
+                isActive: pharmacy.isActive,
+            },
+        });
+    }
+    catch (error) {
+        console.error('Error updating pharmacy location:', error);
+        res.status(500).json({ error: 'Error updating pharmacy location' });
+    }
+};
+// Get all pharmacies with location data for patients (pharmacy finder)
+export const getPharmaciesForPatients = async (req, res) => {
+    try {
+        const { latitude, longitude, radius = 10 } = req.query;
+        let pharmacies = await prisma.pharmacy.findMany({
+            include: {
+                pharmacist: {
+                    include: {
+                        user: { select: { firstName: true, lastName: true, phone: true, email: true } }
+                    }
+                }
+            },
+        });
+        // Filter out pharmacies without proper location data
+        pharmacies = pharmacies.filter(p => p.latitude !== 0 && p.longitude !== 0);
+        // If user location is provided, calculate distances and filter by radius
+        if (latitude && longitude) {
+            const userLat = parseFloat(latitude);
+            const userLng = parseFloat(longitude);
+            const radiusKm = parseFloat(radius);
+            pharmacies = pharmacies
+                .map(pharmacy => {
+                const distance = calculateDistance(userLat, userLng, pharmacy.latitude, pharmacy.longitude);
+                return { ...pharmacy, distance };
+            })
+                .filter(pharmacy => pharmacy.distance <= radiusKm)
+                .sort((a, b) => a.distance - b.distance);
+        }
+        // Format response
+        const formattedPharmacies = pharmacies.map(pharmacy => {
+            return {
+                id: pharmacy.id,
+                name: pharmacy.name,
+                address: pharmacy.address,
+                city: pharmacy.city || '',
+                state: pharmacy.state || '',
+                pincode: pharmacy.pincode || '',
+                latitude: pharmacy.latitude,
+                longitude: pharmacy.longitude,
+                phone: pharmacy.phone || pharmacy.pharmacist?.user?.phone || '',
+                email: pharmacy.email || pharmacy.pharmacist?.user?.email || '',
+                pharmacistName: pharmacy.pharmacist ?
+                    `${pharmacy.pharmacist.user.firstName} ${pharmacy.pharmacist.user.lastName}` : '',
+                operatingHours: pharmacy.operatingHours || {},
+                services: pharmacy.services || [],
+                isActive: pharmacy.isActive !== false,
+                distance: pharmacy.distance || null,
+            };
+        });
+        res.json(formattedPharmacies);
+    }
+    catch (error) {
+        console.error('Error fetching pharmacies for patients:', error);
+        // Return mock data when database is unavailable
+        const mockPharmacies = [
+            {
+                id: '1',
+                name: 'City Center Pharmacy',
+                address: '123 Main St, Los Angeles, CA 90210',
+                city: 'Los Angeles',
+                state: 'CA',
+                pincode: '90210',
+                latitude: 34.0522,
+                longitude: -118.2437,
+                phone: '+1-555-0101',
+                email: 'contact@citycenter.pharmacy',
+                pharmacistName: 'Dr. John Smith',
+                operatingHours: {
+                    monday: { open: '09:00', close: '21:00', isOpen: true },
+                    tuesday: { open: '09:00', close: '21:00', isOpen: true },
+                    wednesday: { open: '09:00', close: '21:00', isOpen: true },
+                    thursday: { open: '09:00', close: '21:00', isOpen: true },
+                    friday: { open: '09:00', close: '21:00', isOpen: true },
+                    saturday: { open: '09:00', close: '21:00', isOpen: true },
+                    sunday: { open: '10:00', close: '20:00', isOpen: true },
+                },
+                services: ['Home Delivery', '24/7 Emergency', 'Online Consultation'],
+                distance: 2.5,
+            },
+            {
+                id: '2',
+                name: 'Health Plus Pharmacy',
+                address: '456 Oak Ave, Los Angeles, CA 90211',
+                city: 'Los Angeles',
+                state: 'CA',
+                pincode: '90211',
+                latitude: 34.0622,
+                longitude: -118.2537,
+                phone: '+1-555-0102',
+                email: 'info@healthplus.pharmacy',
+                pharmacistName: 'Dr. Sarah Johnson',
+                operatingHours: {
+                    monday: { open: '08:00', close: '22:00', isOpen: true },
+                    tuesday: { open: '08:00', close: '22:00', isOpen: true },
+                    wednesday: { open: '08:00', close: '22:00', isOpen: true },
+                    thursday: { open: '08:00', close: '22:00', isOpen: true },
+                    friday: { open: '08:00', close: '22:00', isOpen: true },
+                    saturday: { open: '09:00', close: '21:00', isOpen: true },
+                    sunday: { open: '10:00', close: '20:00', isOpen: true },
+                },
+                services: ['Home Delivery', 'Medicine Refill Reminders', 'Health Checkups'],
+                distance: 3.2,
+            },
+        ];
+        res.json(mockPharmacies);
+    }
+};
+// Helper function to calculate distance between two coordinates (Haversine formula)
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Radius of the Earth in kilometers
+    const dLat = deg2rad(lat2 - lat1);
+    const dLon = deg2rad(lon2 - lon1);
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const d = R * c; // Distance in kilometers
+    return Math.round(d * 100) / 100; // Round to 2 decimal places
+}
+function deg2rad(deg) {
+    return deg * (Math.PI / 180);
+}
