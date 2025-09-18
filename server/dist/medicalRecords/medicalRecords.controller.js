@@ -1,4 +1,4 @@
-import { PrismaClient, Role } from '@prisma/client';
+import { PrismaClient, Role, PrescriptionStatus } from '@prisma/client';
 const prisma = new PrismaClient();
 export const getMyMedicalRecords = async (req, res) => {
     if (!req.userId) {
@@ -35,7 +35,7 @@ export const createMedicalRecord = async (req, res) => {
     if (!req.userId || req.userRole !== Role.DOCTOR) {
         return res.status(403).json({ error: 'Access denied' });
     }
-    const { patientId, appointmentId, diagnosis, prescription } = req.body;
+    const { appointmentId, diagnosis, prescriptionItems, pharmacyId } = req.body;
     try {
         const doctorProfile = await prisma.doctorProfile.findUnique({
             where: { userId: req.userId },
@@ -44,27 +44,67 @@ export const createMedicalRecord = async (req, res) => {
         if (!doctorProfile) {
             return res.status(404).json({ error: 'Doctor profile not found' });
         }
-        // Verify the doctor is associated with the appointment (optional but good for data integrity)
         const appointment = await prisma.appointment.findUnique({
             where: { id: appointmentId },
-            select: { doctorId: true },
+            select: { doctorId: true, patientId: true },
         });
         if (!appointment || appointment.doctorId !== doctorProfile.id) {
             return res.status(403).json({ error: 'Appointment not found or not assigned to this doctor' });
         }
         const newMedicalRecord = await prisma.medicalRecord.create({
             data: {
-                patientId,
+                patientId: appointment.patientId, // Use PatientProfile ID from appointment to satisfy FK
                 doctorId: doctorProfile.id,
                 appointmentId,
                 diagnosis,
-                prescription,
+                // The 'prescription' string field is being replaced by structured Prescription model
+                // So, we remove it from MedicalRecord creation.
             },
         });
+        // If prescription items are provided, create a formal Prescription
+        if (prescriptionItems && prescriptionItems.length > 0) {
+            if (!pharmacyId) {
+                return res.status(400).json({ error: 'Pharmacy ID is required for prescriptions' });
+            }
+            await prisma.prescription.create({
+                data: {
+                    patientId: appointment.patientId,
+                    doctorId: doctorProfile.id,
+                    pharmacyId: pharmacyId,
+                    status: PrescriptionStatus.PENDING, // Default status
+                    items: {
+                        create: await Promise.all(prescriptionItems.map(async (item) => {
+                            let medicine = await prisma.medicine.findFirst({
+                                where: { name: { equals: item.medicineName, mode: 'insensitive' } },
+                            });
+                            if (!medicine) {
+                                medicine = await prisma.medicine.create({
+                                    data: {
+                                        name: item.medicineName,
+                                        genericName: item.medicineName, // Default generic name to be the same
+                                    },
+                                });
+                            }
+                            return {
+                                medicine: { connect: { id: medicine.id } },
+                                quantity: item.quantity,
+                                instructions: item.instructions,
+                                dosageInstructions: {
+                                    create: item.dosageInstructions.map(di => ({
+                                        languageCode: 'en', // Assuming English for now, can be dynamic
+                                        text: `${di.dosage} - ${di.frequency} for ${di.duration}`,
+                                    })),
+                                },
+                            };
+                        })),
+                    },
+                },
+            });
+        }
         res.status(201).json(newMedicalRecord);
     }
     catch (error) {
         console.error(error);
-        res.status(500).json({ error: 'Error creating medical record' });
+        res.status(500).json({ error: 'Error creating medical record or prescription' });
     }
 };

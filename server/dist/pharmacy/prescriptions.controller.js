@@ -1,4 +1,5 @@
 import { PrismaClient, Role } from '@prisma/client';
+import { getPharmacyIdForPharmacist } from '../lib/pharmacyUtils.js';
 const prisma = new PrismaClient();
 // Allowed statuses (and runtime validation) independent of Prisma export shape
 const AllowedPrescriptionStatuses = ['PENDING', 'DISPENSED'];
@@ -10,20 +11,19 @@ export const listPrescriptions = async (req, res) => {
         return res.status(403).json({ error: 'Access denied' });
     }
     const { status } = req.query;
-    // Normalize and validate status if provided
     let normalizedStatus = undefined;
     if (status && typeof status === 'string') {
         const candidate = status.toUpperCase();
         if (isPrescriptionStatus(candidate)) {
             normalizedStatus = candidate;
         }
-        else {
-            return res.status(400).json({ error: 'Invalid status. Allowed: ' + AllowedPrescriptionStatuses.join(', ') });
-        }
     }
     try {
+        // NOTE: This fix assumes your `Prescription` model has a `pharmacyId` field.
+        const pharmacyId = await getPharmacyIdForPharmacist(req.userId);
         const prescriptions = await prisma.prescription.findMany({
             where: {
+                pharmacyId: pharmacyId, // ✅ CRITICAL: Filter by the pharmacist's pharmacy
                 ...(normalizedStatus ? { status: normalizedStatus } : {}),
             },
             orderBy: { createdAt: 'desc' },
@@ -33,7 +33,6 @@ export const listPrescriptions = async (req, res) => {
                 items: {
                     include: {
                         medicine: { select: { id: true, name: true, genericName: true } },
-                        dosageInstructions: true,
                     },
                 },
             },
@@ -43,7 +42,7 @@ export const listPrescriptions = async (req, res) => {
     }
     catch (error) {
         console.error(error);
-        res.status(500).json({ error: 'Error fetching prescriptions' });
+        res.status(500).json({ error: error.message || 'Error fetching prescriptions' });
     }
 };
 // Update a prescription's status

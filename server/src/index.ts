@@ -7,7 +7,7 @@ import { getMyAppointments, createAppointment, getPendingAppointments, approveAp
 import { getAvailableDoctors, updateMyAvailabilityStatus, getMyDoctorProfile } from "./doctors/doctors.controller.js";
 import { getMyMedicalRecords, createMedicalRecord } from "./medicalRecords/medicalRecords.controller.js";
 import { checkSymptoms } from "./symptoms/symptoms.controller.js";
-import { createBatch, getInventory, getLowStockAlerts, getPharmacies, getPharmacyStock, searchMedicineStock, updateStockStatus, getAllMedicines } from "./pharmacy/pharmacy.controller.js"; // Import pharmacy controllers
+import { createBatch, getInventory, getLowStockAlerts, getPharmacies, getPharmacyStock, searchMedicineStock, updateStockStatus, getAllMedicines, getPharmacyLocation, updatePharmacyLocation, getPharmaciesForPatients } from "./pharmacy/pharmacy.controller.js"; // Import pharmacy controllers
 import { listPrescriptions, updatePrescriptionStatus } from "./pharmacy/prescriptions.controller.js";
 import { getAllPharmacists, getAllUsers, getAllDoctors, getAppointmentsSummary, getOverview } from "./admin/admin.controller.js";
 
@@ -63,6 +63,7 @@ app.post("/api/medical-records", authenticateToken, createMedicalRecord);
 // Public Pharmacy Routes (for map, no auth needed to view)
 app.get("/api/pharmacies", getPharmacies);
 app.get("/api/pharmacies/search", searchMedicineStock); // Public medicine search
+app.get("/api/pharmacies/for-patients", getPharmaciesForPatients); // New: Get pharmacies for patients with location data
 app.get("/api/medicines", getAllMedicines); // New: Get all medicines
 
 // Protected Pharmacist Routes
@@ -71,6 +72,10 @@ app.put("/api/pharmacy/stock/:stockId", authenticateToken, updateStockStatus);
 app.get("/api/pharmacy/inventory", authenticateToken, getInventory);
 app.post("/api/pharmacy/batches", authenticateToken, createBatch);
 app.get("/api/pharmacy/alerts/low-stock", authenticateToken, getLowStockAlerts);
+
+// Pharmacy Location Management Routes
+app.get("/api/pharmacy/location", authenticateToken, getPharmacyLocation); // Get pharmacy location for pharmacist
+app.put("/api/pharmacy/location", authenticateToken, updatePharmacyLocation); // Update pharmacy location
 
 // Prescriptions for pharmacist
 app.get("/api/pharmacy/prescriptions", authenticateToken, listPrescriptions);

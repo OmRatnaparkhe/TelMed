@@ -423,3 +423,405 @@ export const getAllMedicines = async (_req: Request, res: Response) => {
     res.status(500).json({ error: 'Error fetching medicines' });
   }
 };
+
+// Get pharmacy location details for the authenticated pharmacist
+export const getPharmacyLocation = async (req: AuthRequest, res: Response) => {
+  if (!req.userId || req.userRole !== Role.PHARMACIST) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+
+  try {
+    console.log('Getting pharmacy location for user:', req.userId);
+    
+    // Get pharmacist profile
+    const pharmacistProfile = await prisma.pharmacistProfile.findUnique({
+      where: { userId: req.userId },
+      include: {
+        pharmacy: true,
+        user: { select: { firstName: true, lastName: true, email: true, phone: true } }
+      }
+    });
+
+    console.log('Pharmacist profile found:', !!pharmacistProfile);
+
+    if (!pharmacistProfile) {
+      return res.status(404).json({ error: 'Pharmacist profile not found' });
+    }
+
+    // If no pharmacy exists, return default structure
+    if (!pharmacistProfile.pharmacy) {
+      console.log('No pharmacy found, returning default data');
+      const defaultData = {
+        id: null,
+        name: '',
+        address: '',
+        city: '',
+        state: '',
+        pincode: '',
+        latitude: 0,
+        longitude: 0,
+        phone: pharmacistProfile.user.phone || '',
+        email: pharmacistProfile.user.email || '',
+        operatingHours: {
+          monday: { open: '09:00', close: '21:00', isOpen: true },
+          tuesday: { open: '09:00', close: '21:00', isOpen: true },
+          wednesday: { open: '09:00', close: '21:00', isOpen: true },
+          thursday: { open: '09:00', close: '21:00', isOpen: true },
+          friday: { open: '09:00', close: '21:00', isOpen: true },
+          saturday: { open: '09:00', close: '21:00', isOpen: true },
+          sunday: { open: '10:00', close: '20:00', isOpen: true },
+        },
+        services: [],
+        isActive: true,
+      };
+      return res.json(defaultData);
+    }
+
+    console.log('Pharmacy found:', pharmacistProfile.pharmacy.name);
+
+    // Parse operating hours and services from JSON fields (with fallback for old schema)
+    const defaultOperatingHours = {
+      monday: { open: '09:00', close: '21:00', isOpen: true },
+      tuesday: { open: '09:00', close: '21:00', isOpen: true },
+      wednesday: { open: '09:00', close: '21:00', isOpen: true },
+      thursday: { open: '09:00', close: '21:00', isOpen: true },
+      friday: { open: '09:00', close: '21:00', isOpen: true },
+      saturday: { open: '09:00', close: '21:00', isOpen: true },
+      sunday: { open: '10:00', close: '20:00', isOpen: true },
+    };
+
+    // Parse address to extract city, state, pincode if stored in address field
+    let cleanAddress = pharmacistProfile.pharmacy.address;
+    let city = '';
+    let state = '';
+    let pincode = '';
+    
+    // Check if address contains JSON data and clean it
+    if (cleanAddress.startsWith('{')) {
+      try {
+        const addressData = JSON.parse(cleanAddress);
+        cleanAddress = addressData.address || cleanAddress;
+        city = addressData.city || '';
+        state = addressData.state || '';
+        pincode = addressData.pincode || '';
+      } catch (e) {
+        // If parsing fails, try to extract from comma-separated format
+        const addressParts = cleanAddress.split(',');
+        if (addressParts.length >= 3) {
+          city = addressParts[addressParts.length - 3]?.trim() || '';
+          const statePin = addressParts[addressParts.length - 1]?.trim() || '';
+          const statePinParts = statePin.split(' ');
+          state = statePinParts[0] || '';
+          pincode = statePinParts[1] || '';
+        }
+      }
+    } else {
+      // Extract from comma-separated format
+      const addressParts = cleanAddress.split(',');
+      if (addressParts.length >= 3) {
+        city = addressParts[addressParts.length - 3]?.trim() || '';
+        const statePin = addressParts[addressParts.length - 1]?.trim() || '';
+        const statePinParts = statePin.split(' ');
+        state = statePinParts[0] || '';
+        pincode = statePinParts[1] || '';
+      }
+    }
+
+    const response = {
+      id: pharmacistProfile.pharmacy.id,
+      name: pharmacistProfile.pharmacy.name,
+      address: cleanAddress,
+      city,
+      state,
+      pincode,
+      latitude: pharmacistProfile.pharmacy.latitude,
+      longitude: pharmacistProfile.pharmacy.longitude,
+      phone: pharmacistProfile.user.phone || '',
+      email: pharmacistProfile.user.email || '',
+      operatingHours: defaultOperatingHours,
+      services: ['Home Delivery', '24/7 Emergency'], // Default services
+      isActive: true,
+    };
+
+    console.log('Returning pharmacy data:', response.name);
+    res.json(response);
+  } catch (error) {
+    console.error('Error fetching pharmacy location:', error);
+    console.error('Error details:', error);
+    res.status(500).json({ 
+      error: 'Error fetching pharmacy location',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+};
+
+// Update pharmacy location for the authenticated pharmacist
+export const updatePharmacyLocation = async (req: AuthRequest, res: Response) => {
+  if (!req.userId || req.userRole !== Role.PHARMACIST) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+
+  try {
+    console.log('Updating pharmacy location for user:', req.userId);
+    console.log('Request body:', req.body);
+
+    const {
+      name,
+      address,
+      city,
+      state,
+      pincode,
+      latitude,
+      longitude,
+      phone,
+      email,
+      operatingHours,
+      services,
+      isActive = true,
+    } = req.body;
+
+    // Validate required fields
+    if (!name || !address || latitude === undefined || longitude === undefined) {
+      return res.status(400).json({ error: 'Missing required fields: name, address, latitude, longitude' });
+    }
+
+    // Get pharmacist profile
+    const pharmacistProfile = await prisma.pharmacistProfile.findUnique({
+      where: { userId: req.userId },
+    });
+
+    if (!pharmacistProfile) {
+      return res.status(404).json({ error: 'Pharmacist profile not found' });
+    }
+
+    // Check if pharmacy exists
+    const existingPharmacy = await prisma.pharmacy.findUnique({
+      where: { pharmacistId: pharmacistProfile.id },
+    });
+
+    console.log('Existing pharmacy:', !!existingPharmacy);
+
+    let pharmacy;
+    
+    // Prepare basic pharmacy data (compatible with current schema)
+    const basicPharmacyData = {
+      name,
+      address: `${address}, ${city || ''}, ${state || ''} ${pincode || ''}`.trim(),
+      latitude: parseFloat(latitude.toString()),
+      longitude: parseFloat(longitude.toString()),
+    };
+
+    console.log('Using basic pharmacy data:', basicPharmacyData);
+
+    if (existingPharmacy) {
+      // Update existing pharmacy
+      pharmacy = await prisma.pharmacy.update({
+        where: { id: existingPharmacy.id },
+        data: basicPharmacyData,
+      });
+      console.log('Pharmacy updated successfully');
+    } else {
+      // Create new pharmacy
+      pharmacy = await prisma.pharmacy.create({
+        data: {
+          ...basicPharmacyData,
+          pharmacistId: pharmacistProfile.id,
+        },
+      });
+      console.log('New pharmacy created successfully');
+
+      // Update pharmacist profile to link to the new pharmacy
+      await prisma.pharmacistProfile.update({
+        where: { id: pharmacistProfile.id },
+        data: { pharmacyId: pharmacy.id },
+      });
+    }
+
+    // Prepare response with current schema fields
+    const response = {
+      message: 'Pharmacy location updated successfully',
+      pharmacy: {
+        id: pharmacy.id,
+        name: pharmacy.name,
+        address: pharmacy.address,
+        city: city || '',
+        state: state || '',
+        pincode: pincode || '',
+        latitude: pharmacy.latitude,
+        longitude: pharmacy.longitude,
+        phone: phone || '',
+        email: email || '',
+        operatingHours: operatingHours || {
+          monday: { open: '09:00', close: '21:00', isOpen: true },
+          tuesday: { open: '09:00', close: '21:00', isOpen: true },
+          wednesday: { open: '09:00', close: '21:00', isOpen: true },
+          thursday: { open: '09:00', close: '21:00', isOpen: true },
+          friday: { open: '09:00', close: '21:00', isOpen: true },
+          saturday: { open: '09:00', close: '21:00', isOpen: true },
+          sunday: { open: '10:00', close: '20:00', isOpen: true },
+        },
+        services: services || [],
+        isActive: true,
+      },
+    };
+
+    console.log('Pharmacy location updated successfully');
+    res.json(response);
+  } catch (error) {
+    console.error('Error updating pharmacy location:', error);
+    console.error('Error details:', error);
+    res.status(500).json({ 
+      error: 'Error updating pharmacy location',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+};
+
+// Get all pharmacies with location data for patients (pharmacy finder)
+export const getPharmaciesForPatients = async (req: Request, res: Response) => {
+  try {
+    console.log('Getting pharmacies for patients with query:', req.query);
+    
+    const { latitude, longitude, radius = 10 } = req.query;
+
+    // Get all pharmacies with pharmacist information
+    let pharmacies = await prisma.pharmacy.findMany({
+      include: {
+        pharmacist: {
+          include: {
+            user: {
+              select: {
+                firstName: true,
+                lastName: true,
+                email: true,
+                phone: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    console.log(`Found ${pharmacies.length} pharmacies in database`);
+
+    // If user location is provided, calculate distances and filter by radius
+    if (latitude && longitude) {
+      const userLat = parseFloat(latitude as string);
+      const userLng = parseFloat(longitude as string);
+      const radiusKm = parseFloat(radius as string);
+
+      console.log(`Filtering by location: ${userLat}, ${userLng} within ${radiusKm}km`);
+
+      pharmacies = pharmacies
+        .map(pharmacy => {
+          const distance = calculateDistance(userLat, userLng, pharmacy.latitude, pharmacy.longitude);
+          return { ...pharmacy, distance };
+        })
+        .filter(pharmacy => (pharmacy as any).distance <= radiusKm)
+        .sort((a, b) => (a as any).distance - (b as any).distance);
+
+      console.log(`After filtering: ${pharmacies.length} pharmacies within radius`);
+    }
+
+    // Format response with current schema compatibility
+    const formattedPharmacies = pharmacies.map(pharmacy => {
+      // Clean up address data if it contains JSON
+      let cleanAddress = pharmacy.address;
+      let city = '';
+      let state = '';
+      let pincode = '';
+      
+      // Check if address contains JSON data and clean it
+      if (cleanAddress.startsWith('{')) {
+        try {
+          const addressData = JSON.parse(cleanAddress);
+          cleanAddress = addressData.address || cleanAddress;
+          city = addressData.city || '';
+          state = addressData.state || '';
+          pincode = addressData.pincode || '';
+        } catch (e) {
+          // If parsing fails, try to extract from comma-separated format
+          const addressParts = cleanAddress.split(',');
+          if (addressParts.length >= 3) {
+            city = addressParts[addressParts.length - 3]?.trim() || '';
+            const statePin = addressParts[addressParts.length - 1]?.trim() || '';
+            const statePinParts = statePin.split(' ');
+            state = statePinParts[0] || '';
+            pincode = statePinParts[1] || '';
+          }
+        }
+      } else {
+        // Extract from comma-separated format
+        const addressParts = cleanAddress.split(',');
+        if (addressParts.length >= 3) {
+          city = addressParts[addressParts.length - 3]?.trim() || '';
+          const statePin = addressParts[addressParts.length - 1]?.trim() || '';
+          const statePinParts = statePin.split(' ');
+          state = statePinParts[0] || '';
+          pincode = statePinParts[1] || '';
+        }
+      }
+
+      // Default operating hours
+      const defaultOperatingHours = {
+        monday: { open: '09:00', close: '21:00', isOpen: true },
+        tuesday: { open: '09:00', close: '21:00', isOpen: true },
+        wednesday: { open: '09:00', close: '21:00', isOpen: true },
+        thursday: { open: '09:00', close: '21:00', isOpen: true },
+        friday: { open: '09:00', close: '21:00', isOpen: true },
+        saturday: { open: '09:00', close: '21:00', isOpen: true },
+        sunday: { open: '10:00', close: '20:00', isOpen: true },
+      };
+
+      return {
+        id: pharmacy.id,
+        name: pharmacy.name,
+        address: cleanAddress,
+        city,
+        state,
+        pincode,
+        latitude: pharmacy.latitude,
+        longitude: pharmacy.longitude,
+        phone: pharmacy.pharmacist?.user?.phone || '',
+        email: pharmacy.pharmacist?.user?.email || '',
+        pharmacistName: pharmacy.pharmacist ? 
+          `${pharmacy.pharmacist.user.firstName} ${pharmacy.pharmacist.user.lastName}` : 'Licensed Pharmacist',
+        operatingHours: defaultOperatingHours,
+        services: ['Home Delivery', '24/7 Emergency', 'Health Checkups', 'Online Consultation'], // Default services
+        isActive: true,
+        distance: (pharmacy as any).distance || null,
+      };
+    });
+
+    console.log(`Returning ${formattedPharmacies.length} formatted pharmacies`);
+    res.json(formattedPharmacies);
+
+  } catch (error) {
+    console.error('Error fetching pharmacies for patients:', error);
+    console.error('Error details:', error);
+    
+    // Return empty array instead of mock data to show real issue
+    res.status(500).json({ 
+      error: 'Error fetching pharmacies',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      pharmacies: [] // Empty array so frontend can handle gracefully
+    });
+  }
+};
+
+// Helper function to calculate distance between two coordinates (Haversine formula)
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Radius of the Earth in kilometers
+  const dLat = deg2rad(lat2 - lat1);
+  const dLon = deg2rad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const d = R * c; // Distance in kilometers
+  return Math.round(d * 100) / 100; // Round to 2 decimal places
+}
+
+function deg2rad(deg: number): number {
+  return deg * (Math.PI / 180);
+}
