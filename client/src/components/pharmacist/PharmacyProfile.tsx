@@ -69,19 +69,6 @@ const PharmacyProfile: React.FC = () => {
     }
   };
 
-  const formatOperatingHours = (operatingHours: any) => {
-    if (!operatingHours) return 'Not specified';
-    
-    const openDays = Object.entries(operatingHours)
-      .filter(([_, hours]: [string, any]) => hours.isOpen)
-      .map(([day, hours]: [string, any]) => {
-        const dayName = day.charAt(0).toUpperCase() + day.slice(1);
-        return `${dayName}: ${hours.open} - ${hours.close}`;
-      });
-
-    return openDays.length > 0 ? openDays.join(', ') : 'Closed all days';
-  };
-
   const handleEditLocation = () => {
     setIsEditing(true);
   };

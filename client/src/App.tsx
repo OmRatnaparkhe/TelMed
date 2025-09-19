@@ -15,6 +15,10 @@ import PharmacyLocator from './pages/PharmacyLocator';
 import { I18nextProvider } from 'react-i18next';
 import i18n from './i18n';
 import LandingPage from './pages/LandingPage';
+import AdminUsers from './pages/AdminUsers';
+import AdminReports from './pages/AdminReports';
+import AdminSettings from './pages/AdminSettings';
+import AdminDatabase from './pages/AdminDatabase';
 
 function App() {
   return (
@@ -50,6 +54,10 @@ function App() {
           {/* Admin-only routes */}
           <Route element={<ProtectedRoute allowedRoles={["ADMIN"]} />}>
             <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/users" element={<AdminUsers />} />
+            <Route path="/admin/reports" element={<AdminReports />} />
+            <Route path="/admin/settings" element={<AdminSettings />} />
+            <Route path="/admin/database" element={<AdminDatabase />} />
           </Route>
 
           {/* Catch-all for 404 - You might want a dedicated 404 page */}

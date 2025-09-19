@@ -30,10 +30,19 @@ interface User {
   role: string;
 }
 
+interface OverviewCounts {
+  users: number;
+  doctors: number;
+  pharmacists: number;
+  pharmacies: number;
+  patients: number;
+}
+
 const AdminDashboard: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [overview, setOverview] = useState<OverviewCounts | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -48,6 +57,19 @@ const AdminDashboard: React.FC = () => {
         // Fetch user data
         const userResponse = await api.get('/api/auth/me');
         setUser(userResponse.data);
+        if (userResponse.data?.role && userResponse.data.role !== 'ADMIN') {
+          navigate('/unauthorized');
+          return;
+        }
+
+        // Fetch admin overview counts
+        try {
+          const overviewRes = await api.get('/api/admin/overview');
+          setOverview(overviewRes.data);
+        } catch (e: any) {
+          // Show soft error but keep page usable
+          console.warn('Failed to load overview', e?.response?.data || e?.message);
+        }
 
       } catch (err: any) {
         setError(err.response?.data?.error || 'Failed to fetch dashboard data');
@@ -96,18 +118,18 @@ const AdminDashboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-blue-50/30 to-green-50/30">
       {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-16 items-center justify-between">
+      <header className="fixed top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container flex items-center justify-between min-h-16 py-2">
           <div className="flex items-center space-x-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
               <Heart className="h-6 w-6 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-xl font-bold">Admin Dashboard</h1>
-              <p className="text-sm text-muted-foreground">Welcome back, {user?.firstName}!</p>
+              <h1 className="text-lg sm:text-xl font-bold">Admin Dashboard</h1>
+              <p className="text-xs sm:text-sm text-muted-foreground">Welcome back, {user?.firstName}!</p>
             </div>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
             <Badge variant="secondary" className="flex items-center gap-1">
               <Shield className="h-3 w-3" />
               Administrator
@@ -120,53 +142,53 @@ const AdminDashboard: React.FC = () => {
         </div>
       </header>
 
-      <main className="container py-8 space-y-8">
+      <main className="container pt-24 sm:pt-20 pb-6 sm:pb-8 space-y-6 sm:space-y-8">
         {/* System Overview Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="flex items-center p-6">
+          <Card className="mt-4 sm:mt-0">
+            <CardContent className="flex items-center p-4 sm:p-6">
               <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100">
                 <Users className="h-6 w-6 text-blue-600" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-muted-foreground">Total Users</p>
-                <p className="text-2xl font-bold">1,247</p>
+                <p className="text-2xl font-bold">{overview?.users ?? '—'}</p>
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="flex items-center p-6">
+            <CardContent className="flex items-center p-4 sm:p-6">
               <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-green-100">
                 <UserCheck className="h-6 w-6 text-green-600" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-muted-foreground">Active Doctors</p>
-                <p className="text-2xl font-bold">89</p>
+                <p className="text-2xl font-bold">{overview?.doctors ?? '—'}</p>
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="flex items-center p-6">
+            <CardContent className="flex items-center p-4 sm:p-6">
               <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-yellow-100">
                 <Activity className="h-6 w-6 text-yellow-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">Daily Appointments</p>
-                <p className="text-2xl font-bold">156</p>
+                <p className="text-sm font-medium text-muted-foreground">Pharmacies</p>
+                <p className="text-2xl font-bold">{overview?.pharmacies ?? '—'}</p>
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="flex items-center p-6">
+            <CardContent className="flex items-center p-4 sm:p-6">
               <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-purple-100">
                 <CheckCircle className="h-6 w-6 text-purple-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">System Health</p>
-                <p className="text-2xl font-bold text-green-600">99.9%</p>
+                <p className="text-sm font-medium text-muted-foreground">Patients</p>
+                <p className="text-2xl font-bold">{overview?.patients ?? '—'}</p>
               </div>
             </CardContent>
           </Card>

@@ -1,8 +1,3 @@
-import OpenAI from 'openai';
-// Initialize OpenAI client
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-});
 // Fallback function for when OpenAI is not available
 const getFallbackSymptomAnalysis = (symptoms) => {
     const lowerCaseSymptoms = symptoms.toLowerCase();
@@ -33,60 +28,6 @@ const getFallbackSymptomAnalysis = (symptoms) => {
     }
     return results;
 };
-// AI-powered symptom analysis using OpenAI GPT-4
-const getAISymptomAnalysis = async (symptoms) => {
-    try {
-        const prompt = `You are a medical AI assistant. Analyze the following symptoms and provide possible conditions and recommendations. 
-
-IMPORTANT GUIDELINES:
-- Provide 1-3 most likely conditions based on the symptoms
-- Always emphasize the need for professional medical consultation
-- Do not provide definitive diagnoses
-- Include general care recommendations
-- Be conservative and responsible in your suggestions
-- Format your response as a JSON array with objects containing 'condition' and 'recommendation' fields
-
-Symptoms: ${symptoms}
-
-Respond with a JSON array only, no additional text:`;
-        const completion = await openai.chat.completions.create({
-            model: 'gpt-4o-mini', // Using cost-effective model
-            messages: [
-                {
-                    role: 'system',
-                    content: 'You are a responsible medical AI assistant. Always recommend consulting healthcare professionals and never provide definitive diagnoses. Respond only with valid JSON.'
-                },
-                {
-                    role: 'user',
-                    content: prompt
-                }
-            ],
-            max_tokens: 500,
-            temperature: 0.3,
-        });
-        const response = completion.choices[0]?.message?.content;
-        if (!response) {
-            throw new Error('No response from OpenAI');
-        }
-        // Parse the JSON response
-        const analysisResults = JSON.parse(response);
-        // Validate the response format
-        if (!Array.isArray(analysisResults)) {
-            throw new Error('Invalid response format');
-        }
-        // Ensure each result has the required fields
-        const validResults = analysisResults.filter(result => result.condition && result.recommendation).map(result => ({
-            condition: String(result.condition),
-            recommendation: String(result.recommendation)
-        }));
-        return validResults.length > 0 ? validResults : getFallbackSymptomAnalysis(symptoms);
-    }
-    catch (error) {
-        console.error('OpenAI API error:', error);
-        // Fall back to simple keyword matching
-        return getFallbackSymptomAnalysis(symptoms);
-    }
-};
 export const checkSymptoms = async (req, res) => {
     const { symptoms } = req.body;
     if (!symptoms) {
@@ -96,15 +37,7 @@ export const checkSymptoms = async (req, res) => {
         return res.status(400).json({ error: 'Please provide a valid symptom description' });
     }
     try {
-        let results;
-        // Try AI analysis first, fall back to simple matching if needed
-        if (process.env.OPENAI_API_KEY) {
-            results = await getAISymptomAnalysis(symptoms.trim());
-        }
-        else {
-            console.log('OpenAI API key not found, using fallback analysis');
-            results = getFallbackSymptomAnalysis(symptoms.trim());
-        }
+        let results = getFallbackSymptomAnalysis(symptoms.trim());
         // Add disclaimer to all recommendations
         results = results.map(result => ({
             ...result,

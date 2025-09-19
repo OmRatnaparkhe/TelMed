@@ -13,8 +13,12 @@ import { getAllPharmacists, getAllUsers, getAllDoctors, getAppointmentsSummary, 
 dotenv.config();
 const app = express();
 app.use(express.json());
+// Configure CORS: allow configured origins (comma-separated) or reflect request origin in dev/prod
+const corsOrigins = process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(",").map(o => o.trim()).filter(Boolean)
+    : true; // true reflects the request origin in the CORS header
 app.use(cors({
-    origin: ["http://localhost:5173", "http://localhost:5174"],
+    origin: corsOrigins,
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: [
