@@ -211,18 +211,18 @@ const PharmacyLocator: React.FC = () => {
   };
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center">
+    <div className="min-h-screen flex items-center justify-center p-6">
       <div className="text-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-        <p>Loading pharmacies...</p>
+        <p className="text-base sm:text-lg">Loading pharmacies...</p>
       </div>
     </div>
   );
   
   if (error) return (
-    <div className="min-h-screen flex items-center justify-center text-red-600">
+    <div className="min-h-screen flex items-center justify-center p-6 text-red-600">
       <div className="text-center">
-        <p className="mb-4">{error}</p>
+        <p className="mb-4 text-base sm:text-lg">{error}</p>
         <button 
           onClick={fetchPharmacies}
           className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
@@ -235,16 +235,16 @@ const PharmacyLocator: React.FC = () => {
 
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6">
+      <div className="max-w-6xl mx-auto">
         {/* Simple Header */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Find Nearby Pharmacies</h1>
-          <p className="text-gray-600">Discover pharmacies around you with real-time availability</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Find Nearby Pharmacies</h1>
+          <p className="text-gray-600 text-sm sm:text-base">Discover pharmacies around you with real-time availability</p>
         </div>
 
         {/* Simple Search Bar */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4 mb-6">
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -254,7 +254,7 @@ const PharmacyLocator: React.FC = () => {
             <input
               type="text"
               placeholder="Search for medicine or pharmacy..."
-              className="block w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="block w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyPress={(e) => {
@@ -279,14 +279,14 @@ const PharmacyLocator: React.FC = () => {
         </div>
 
         {/* Simple Results Header */}
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <div className="flex items-center space-x-2">
             <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
               <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
               </svg>
             </div>
-            <h2 className="text-xl font-semibold text-gray-900">Nearby Pharmacies</h2>
+            <h2 className="text-xl sm:text-2xl font-semibold text-gray-900">Nearby Pharmacies</h2>
             <span className="bg-blue-100 text-blue-800 text-sm font-medium px-2.5 py-0.5 rounded-full">
               {(searchTerm ? filteredPharmacies : pharmacies).length}
             </span>
@@ -294,22 +294,22 @@ const PharmacyLocator: React.FC = () => {
           <button 
             onClick={getCurrentLocation}
             disabled={loading}
-            className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+            className="text-blue-600 hover:text-blue-700 text-sm font-medium self-start sm:self-auto"
           >
             📍 Update Location
           </button>
         </div>
 
         {/* Simple Pharmacy Cards */}
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
           {(searchTerm ? filteredPharmacies : pharmacies).map((pharmacy) => (
-            <div key={pharmacy.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+            <div key={pharmacy.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow h-full flex flex-col">
               {/* Card Header with Gradient */}
               <div className="bg-gradient-to-r from-blue-500 to-purple-500 p-4">
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
-                    <h3 className="text-lg font-bold text-white mb-1">{pharmacy.name}</h3>
-                    <p className="text-blue-100 text-sm">{pharmacy.pharmacistName || 'Licensed Pharmacist'}</p>
+                    <h3 className="text-lg md:text-xl font-bold text-white mb-1">{pharmacy.name}</h3>
+                    <p className="text-blue-100 text-sm md:text-base">{pharmacy.pharmacistName || 'Licensed Pharmacist'}</p>
                   </div>
                   <div className="ml-3">
                     {isPharmacyOpen(pharmacy) ? (
@@ -326,7 +326,7 @@ const PharmacyLocator: React.FC = () => {
               </div>
 
               {/* Card Body */}
-              <div className="p-4">
+              <div className="p-4 flex-1 flex flex-col">
                 {/* Address */}
                 <div className="flex items-start space-x-2 mb-3">
                   <svg className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -364,17 +364,17 @@ const PharmacyLocator: React.FC = () => {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex space-x-2">
+                <div className="mt-auto flex flex-col sm:flex-row gap-2">
                   <button
                     onClick={() => handleStartNavigation(pharmacy)}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center space-x-1"
+                    className="w-full sm:flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center space-x-1"
                   >
                     <span>🧭</span>
                     <span>Navigate</span>
                   </button>
                   <button
                     onClick={() => handlePharmacyClick(pharmacy)}
-                    className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center space-x-1"
+                    className="w-full sm:flex-1 bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center space-x-1"
                   >
                     <span>ℹ️</span>
                     <span>Details</span>
@@ -382,7 +382,7 @@ const PharmacyLocator: React.FC = () => {
                   {pharmacy.phone && (
                     <a
                       href={`tel:${pharmacy.phone}`}
-                      className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center space-x-1"
+                      className="w-full sm:flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors flex items-center justify-center space-x-1"
                     >
                       <span>📞</span>
                       <span>Call</span>
@@ -433,17 +433,12 @@ const PharmacyLocator: React.FC = () => {
 
       {/* Pharmacy Details Modal */}
       {showPharmacyDetails && selectedPharmacy && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[9999]">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-[9999]">
+          <div className="bg-white shadow-xl w-full h-full sm:h-auto sm:max-w-2xl sm:rounded-lg max-h-full sm:max-h-[90vh] overflow-y-auto">
+            <div className="p-4 sm:p-6">
               <div className="flex justify-between items-start mb-4">
-                <h2 className="text-2xl font-bold text-gray-900">{selectedPharmacy.name}</h2>
-                <button
-                  onClick={() => setShowPharmacyDetails(false)}
-                  className="text-gray-400 hover:text-gray-600 text-2xl"
-                >
-                  ×
-                </button>
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{selectedPharmacy.name}</h2>
+                <button onClick={() => setShowPharmacyDetails(false)} className="text-gray-400 hover:text-gray-600 text-2xl">×</button>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -520,16 +515,16 @@ const PharmacyLocator: React.FC = () => {
               )}
 
               {/* Action Buttons */}
-              <div className="flex gap-3 mt-6 pt-4 border-t">
+              <div className="flex flex-col sm:flex-row gap-3 mt-6 pt-4 border-t">
                 <button
                   onClick={() => handleStartNavigation(selectedPharmacy)}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-md transition-colors"
+                  className="w-full sm:flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-md transition-colors"
                 >
                   🧭 Start Navigation
                 </button>
                 <button
                   onClick={() => window.open(`tel:${selectedPharmacy.phone}`, '_self')}
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-md transition-colors"
+                  className="w-full sm:flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-md transition-colors"
                   disabled={!selectedPharmacy.phone}
                 >
                   📞 Call Now

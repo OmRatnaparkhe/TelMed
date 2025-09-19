@@ -226,7 +226,7 @@ const DoctorDashboard: React.FC = () => {
         </div>
       </header>
 
-      <main className="container py-8 space-y-8">
+      <main className="container py-6 sm:py-8 space-y-8">
         {/* Quick Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card>

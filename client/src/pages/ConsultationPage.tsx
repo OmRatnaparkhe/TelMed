@@ -148,7 +148,6 @@ const ConsultationPage: React.FC = () => {
     }
 
     try {
-      const token = localStorage.getItem('token');
 
       const payload: { appointmentId: string; diagnosis: string; prescriptionItems?: PrescriptionItemInput[]; pharmacyId?: string } = {
         appointmentId: appointment.id,
@@ -176,14 +175,14 @@ const ConsultationPage: React.FC = () => {
     }
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><p>Loading consultation details...</p></div>;
-  if (error) return <div className="min-h-screen flex items-center justify-center text-red-600"><p>{error}</p></div>;
-  if (!appointment) return <div className="min-h-screen flex items-center justify-center"><p>Appointment not found.</p></div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center p-4 sm:p-6"><p>Loading consultation details...</p></div>;
+  if (error) return <div className="min-h-screen flex items-center justify-center text-red-600 p-4 sm:p-6"><p>{error}</p></div>;
+  if (!appointment) return <div className="min-h-screen flex items-center justify-center p-4 sm:p-6"><p>Appointment not found.</p></div>;
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
-      <div className="max-w-2xl mx-auto bg-white p-6 rounded-lg shadow-md">
-        <h1 className="text-3xl font-extrabold text-gray-900 mb-6">Consultation for {appointment.patient.user.firstName} {appointment.patient.user.lastName}</h1>
+    <div className="min-h-screen bg-gray-100 p-4 sm:p-6 md:p-8">
+      <div className="max-w-3xl mx-auto bg-white p-4 sm:p-6 rounded-lg shadow-md">
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-4 sm:mb-6">Consultation for {appointment.patient.user.firstName} {appointment.patient.user.lastName}</h1>
 
         <div className="mb-4 p-4 bg-blue-50 rounded-md border border-blue-200">
           <h2 className="text-xl font-semibold text-blue-800">Patient Details:</h2>
@@ -209,7 +208,7 @@ const ConsultationPage: React.FC = () => {
             ></Textarea>
           </div>
 
-          <div className="border p-4 rounded-md space-y-4">
+          <div className="border p-3 sm:p-4 rounded-md space-y-4">
             <h2 className="text-xl font-semibold text-gray-800">Prescription Details</h2>
 
             <div>

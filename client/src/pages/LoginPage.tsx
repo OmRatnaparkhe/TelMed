@@ -31,7 +31,7 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-blue-50/30 to-green-50/30 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-background via-blue-50/30 to-green-50/30 flex items-center justify-center p-4 sm:p-6">
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
@@ -119,7 +119,7 @@ const LoginPage: React.FC = () => {
             <CardTitle className="text-sm">Demo Credentials</CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
               <div className="space-y-1">
                 <p className="font-medium">Patient:</p>
                 <p className="text-muted-foreground">patient@demo.com</p>

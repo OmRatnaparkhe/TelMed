@@ -107,7 +107,7 @@ const PatientDashboard: React.FC = () => {
   };
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-blue-50/30 to-green-50/30">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-blue-50/30 to-green-50/30 p-4">
       <div className="text-center">
         <div className="animate-spin rounded-full h-12 w-12 border-4 border-muted border-t-primary mx-auto mb-4"></div>
         <p className="text-lg font-medium">Loading your dashboard...</p>
@@ -139,14 +139,14 @@ const PatientDashboard: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-background via-blue-50/30 to-green-50/30">
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-16 items-center justify-between">
+        <div className="container flex items-center justify-between min-h-16 py-2">
           <div className="flex items-center space-x-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
               <Heart className="h-6 w-6 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-xl font-bold">TelMed Dashboard</h1>
-              <p className="text-sm text-muted-foreground">Welcome back, {user?.firstName}!</p>
+              <h1 className="text-lg sm:text-xl font-bold">TelMed Dashboard</h1>
+              <p className="text-xs sm:text-sm text-muted-foreground">Welcome back, {user?.firstName}!</p>
             </div>
           </div>
           <div className="flex items-center space-x-2">
@@ -177,7 +177,7 @@ const PatientDashboard: React.FC = () => {
         </div>
       </header>
 
-      <main className="container py-8 space-y-8">
+      <main className="container py-6 sm:py-8 space-y-8">
         {/* Quick Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card>
@@ -350,7 +350,7 @@ const PatientDashboard: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground mb-2">In case of medical emergency, call:</p>
-                <p className="text-2xl font-bold text-destructive">911</p>
+                <p className="text-2xl font-bold text-destructive">112</p>
                 <p className="text-xs text-muted-foreground mt-2">Available 24/7 for immediate assistance</p>
               </CardContent>
             </Card>

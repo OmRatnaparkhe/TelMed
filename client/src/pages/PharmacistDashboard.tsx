@@ -171,11 +171,11 @@ const PharmacistDashboard: React.FC = () => {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+      <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         {/* Tab Navigation */}
         <div className="mb-8">
           <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8">
+            <nav className="-mb-px flex space-x-6 overflow-x-auto no-scrollbar">
               <button
                 onClick={() => setActiveTab('dashboard')}
                 className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${

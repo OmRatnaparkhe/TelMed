@@ -6,171 +6,72 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('Starting seed...');
 
-  // Create users (pharmacists)
-  const pharmacist1 = await prisma.user.create({
-    data: {
-      email: 'pharmacist1@example.com',
-      password: 'hashedpassword1',
-      role: Role.PHARMACIST,
-      firstName: 'John',
-      lastName: 'Smith',
-      phone: '+1234567890',
-      doctorProfile: {
-        create: {
-          specialization: 'Pharmacy',
-          qualifications: 'PharmD',
-          experienceYears: 5,
-          isAvailable: true,
-        },
+  // Helper to ensure a pharmacist user and linked PharmacistProfile exist
+  async function ensurePharmacistUser(
+    email: string,
+    password: string,
+    firstName: string,
+    lastName: string,
+    phone: string
+  ) {
+    // Upsert user by unique email
+    const user = await prisma.user.upsert({
+      where: { email },
+      update: { password, role: Role.PHARMACIST, firstName, lastName, phone },
+      create: {
+        email,
+        password,
+        role: Role.PHARMACIST,
+        firstName,
+        lastName,
+        phone,
+        pharmacistProfile: { create: {} },
       },
-    },
-    include: {
-      doctorProfile: true,
-    },
-  });
+      include: { pharmacistProfile: true },
+    });
 
-  const pharmacist2 = await prisma.user.create({
-    data: {
-      email: 'pharmacist2@example.com',
-      password: 'hashedpassword2',
-      role: Role.PHARMACIST,
-      firstName: 'Jane',
-      lastName: 'Doe',
-      phone: '+1234567891',
-      doctorProfile: {
-        create: {
-          specialization: 'Pharmacy',
-          qualifications: 'PharmD',
-          experienceYears: 8,
-          isAvailable: true,
-        },
-      },
-    },
-    include: {
-      doctorProfile: true,
-    },
-  });
+    // Ensure PharmacistProfile exists for updated users
+    let pharmacistProfile = user.pharmacistProfile;
+    if (!pharmacistProfile) {
+      pharmacistProfile = await prisma.pharmacistProfile.create({ data: { userId: user.id } });
+    }
 
-  const pharmacist3 = await prisma.user.create({
-    data: {
-      email: 'pharmacist3@example.com',
-      password: 'hashedpassword3',
-      role: Role.PHARMACIST,
-      firstName: 'Mike',
-      lastName: 'Johnson',
-      phone: '+1234567892',
-      doctorProfile: {
-        create: {
-          specialization: 'Pharmacy',
-          qualifications: 'PharmD',
-          experienceYears: 3,
-          isAvailable: true,
-        },
-      },
-    },
-    include: {
-      doctorProfile: true,
-    },
-  });
+    return { user, pharmacistProfile };
+  }
 
-  const pharmacist4 = await prisma.user.create({
-    data: {
-      email: 'pharmacist4@example.com',
-      password: 'hashedpassword4',
-      role: Role.PHARMACIST,
-      firstName: 'Sarah',
-      lastName: 'Wilson',
-      phone: '+1234567893',
-      doctorProfile: {
-        create: {
-          specialization: 'Pharmacy',
-          qualifications: 'PharmD',
-          experienceYears: 10,
-          isAvailable: true,
-        },
-      },
-    },
-    include: {
-      doctorProfile: true,
-    },
-  });
+  // Create or update pharmacists
+  const p1 = await ensurePharmacistUser('pharmacist1@example.com', 'hashedpassword1', 'John', 'Smith', '+1234567890');
+  const p2 = await ensurePharmacistUser('pharmacist2@example.com', 'hashedpassword2', 'Jane', 'Doe', '+1234567891');
+  const p3 = await ensurePharmacistUser('pharmacist3@example.com', 'hashedpassword3', 'Mike', 'Johnson', '+1234567892');
+  const p4 = await ensurePharmacistUser('pharmacist4@example.com', 'hashedpassword4', 'Sarah', 'Wilson', '+1234567893');
 
-  // Create pharmacies
-  const pharmacy1 = await prisma.pharmacy.create({
-    data: {
-      name: 'City Center Pharmacy',
-      address: '123 Main St, Los Angeles, CA 90210',
-      latitude: 34.0522,
-      longitude: -118.2437,
-      pharmacistId: pharmacist1.doctorProfile!.id,
-    },
-  });
+  // Create or update pharmacies linked to PharmacistProfile
+  async function ensurePharmacy(name: string, address: string, latitude: number, longitude: number, pharmacistProfileId: string) {
+    // One pharmacy per pharmacist (pharmacistId is unique)
+    return prisma.pharmacy.upsert({
+      where: { pharmacistId: pharmacistProfileId },
+      update: { name, address, latitude, longitude },
+      create: { name, address, latitude, longitude, pharmacistId: pharmacistProfileId },
+    });
+  }
 
-  const pharmacy2 = await prisma.pharmacy.create({
-    data: {
-      name: 'Health Plus Pharmacy',
-      address: '456 Oak Ave, Los Angeles, CA 90211',
-      latitude: 34.0622,
-      longitude: -118.2537,
-      pharmacistId: pharmacist2.doctorProfile!.id,
-    },
-  });
-
-  const pharmacy3 = await prisma.pharmacy.create({
-    data: {
-      name: 'MediCare Pharmacy',
-      address: '789 Pine St, Los Angeles, CA 90212',
-      latitude: 34.0422,
-      longitude: -118.2337,
-      pharmacistId: pharmacist3.doctorProfile!.id,
-    },
-  });
-
-  const pharmacy4 = await prisma.pharmacy.create({
-    data: {
-      name: 'Quick Relief Pharmacy',
-      address: '321 Elm St, Los Angeles, CA 90213',
-      latitude: 34.0722,
-      longitude: -118.2637,
-      pharmacistId: pharmacist4.doctorProfile!.id,
-    },
-  });
+  const pharmacy1 = await ensurePharmacy('City Center Pharmacy', '123 Main St, Los Angeles, CA 90210', 34.0522, -118.2437, p1.pharmacistProfile.id);
+  const pharmacy2 = await ensurePharmacy('Health Plus Pharmacy', '456 Oak Ave, Los Angeles, CA 90211', 34.0622, -118.2537, p2.pharmacistProfile.id);
+  const pharmacy3 = await ensurePharmacy('MediCare Pharmacy', '789 Pine St, Los Angeles, CA 90212', 34.0422, -118.2337, p3.pharmacistProfile.id);
+  const pharmacy4 = await ensurePharmacy('Quick Relief Pharmacy', '321 Elm St, Los Angeles, CA 90213', 34.0722, -118.2637, p4.pharmacistProfile.id);
 
   // Create medicines
-  const paracetamol = await prisma.medicine.create({
-    data: {
-      name: 'Paracetamol',
-      genericName: 'Acetaminophen',
-    },
-  });
+  async function findOrCreateMedicine(name: string, genericName: string) {
+    const existing = await prisma.medicine.findFirst({ where: { name } });
+    if (existing) return existing;
+    return prisma.medicine.create({ data: { name, genericName } });
+  }
 
-  const ibuprofen = await prisma.medicine.create({
-    data: {
-      name: 'Ibuprofen',
-      genericName: 'Ibuprofen',
-    },
-  });
-
-  const aspirin = await prisma.medicine.create({
-    data: {
-      name: 'Aspirin',
-      genericName: 'Acetylsalicylic acid',
-    },
-  });
-
-  const amoxicillin = await prisma.medicine.create({
-    data: {
-      name: 'Amoxicillin',
-      genericName: 'Amoxicillin',
-    },
-  });
-
-  const cetirizine = await prisma.medicine.create({
-    data: {
-      name: 'Cetirizine',
-      genericName: 'Cetirizine Hydrochloride',
-    },
-  });
+  const paracetamol = await findOrCreateMedicine('Paracetamol', 'Acetaminophen');
+  const ibuprofen = await findOrCreateMedicine('Ibuprofen', 'Ibuprofen');
+  const aspirin = await findOrCreateMedicine('Aspirin', 'Acetylsalicylic acid');
+  const amoxicillin = await findOrCreateMedicine('Amoxicillin', 'Amoxicillin');
+  const cetirizine = await findOrCreateMedicine('Cetirizine', 'Cetirizine Hydrochloride');
 
   // Create pharmacy stock
   const stockEntries = [
@@ -199,8 +100,10 @@ async function main() {
   ];
 
   for (const stock of stockEntries) {
-    await prisma.pharmacyStock.create({
-      data: stock,
+    await prisma.pharmacyStock.upsert({
+      where: { pharmacyId_medicineId: { pharmacyId: stock.pharmacyId, medicineId: stock.medicineId } },
+      update: { stockStatus: stock.stockStatus },
+      create: stock,
     });
   }
 

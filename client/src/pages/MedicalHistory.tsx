@@ -66,21 +66,21 @@ const MedicalHistory: React.FC = () => {
     doc.save(`medical_record_${record.id}.pdf`);
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><p>Loading medical records...</p></div>;
-  if (error) return <div className="min-h-screen flex items-center justify-center text-red-600"><p>{error}</p></div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center p-4 sm:p-6"><p>Loading medical records...</p></div>;
+  if (error) return <div className="min-h-screen flex items-center justify-center text-red-600 p-4 sm:p-6"><p>{error}</p></div>;
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
-      <div className="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-md">
-        <h1 className="text-3xl font-extrabold text-gray-900 mb-6">My Medical History</h1>
+    <div className="min-h-screen bg-gray-100 p-4 sm:p-6 md:p-8">
+      <div className="max-w-4xl mx-auto bg-white p-4 sm:p-6 rounded-lg shadow-md">
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-4 sm:mb-6">My Medical History</h1>
 
         {medicalRecords.length === 0 ? (
           <p className="text-gray-600">No medical records found.</p>
         ) : (
-          <ul className="space-y-6">
+          <ul className="space-y-4 sm:space-y-6">
             {medicalRecords.map((record) => (
-              <li key={record.id} className="bg-green-50 p-4 rounded-lg shadow-sm border border-green-200">
-                <p className="text-lg font-medium text-green-800">Diagnosis: {record.diagnosis}</p>
+              <li key={record.id} className="bg-green-50 p-4 sm:p-5 rounded-lg shadow-sm border border-green-200">
+                <p className="text-base sm:text-lg font-medium text-green-800">Diagnosis: {record.diagnosis}</p>
                 <p className="text-gray-700">Doctor: Dr. {record.doctor.user.firstName} {record.doctor.user.lastName}</p>
                 <p className="text-gray-700">Date: {new Date(record.createdAt).toLocaleDateString()}</p>
                 <button

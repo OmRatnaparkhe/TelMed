@@ -31,23 +31,23 @@ const LandingPage: React.FC = () => {
 
       <main>
         {/* Hero Section */}
-        <section className="container py-24 md:py-32">
-          <div className="grid gap-12 lg:grid-cols-2 lg:gap-12 items-center">
+        <section className="container py-16 sm:py-20 md:py-24 lg:py-32">
+          <div className="grid gap-10 sm:gap-12 lg:grid-cols-2 lg:gap-12 items-center">
             <div className="space-y-8">
               <div className="space-y-4">
-                <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl">
+                <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold tracking-tighter">
                   Your Digital
                   <span className="bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
                     {" "}Healthcare
                   </span>
                   {" "}Gateway
                 </h1>
-                <p className="max-w-[600px] text-muted-foreground md:text-xl">
+                <p className="max-w-[600px] text-muted-foreground text-base sm:text-lg md:text-xl">
                   Experience seamless healthcare with our comprehensive telemedicine platform. 
                   Book appointments, consult doctors online, check symptoms, and manage your medical history.
                 </p>
               </div>
-              <div className="flex flex-col gap-4 sm:flex-row">
+              <div className="flex flex-col gap-3 sm:flex-row">
                 <Button size="lg" asChild>
                   <Link to="/register">Start Your Journey</Link>
                 </Button>
@@ -68,7 +68,7 @@ const LandingPage: React.FC = () => {
             </div>
             
             {/* Feature Cards Grid */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Card className="border-2 hover:shadow-lg transition-shadow">
                 <CardHeader className="pb-3">
                   <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100">
@@ -129,18 +129,18 @@ const LandingPage: React.FC = () => {
         </section>
 
         {/* Features Section */}
-        <section className="border-t bg-muted/50 py-24">
+        <section className="border-t bg-muted/50 py-16 sm:py-20 lg:py-24">
           <div className="container">
             <div className="text-center space-y-4 mb-16">
-              <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
+              <h2 className="text-2xl sm:text-4xl md:text-5xl font-bold tracking-tighter">
                 Healthcare for Everyone
               </h2>
-              <p className="max-w-[900px] mx-auto text-muted-foreground md:text-xl">
+              <p className="max-w-[900px] mx-auto text-muted-foreground text-base sm:text-lg md:text-xl">
                 Our platform serves all stakeholders in the healthcare ecosystem with specialized tools and features.
               </p>
             </div>
             
-            <div className="grid gap-8 md:grid-cols-3">
+            <div className="grid gap-6 sm:gap-8 sm:grid-cols-2 md:grid-cols-3">
               <Card className="text-center">
                 <CardHeader>
                   <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-100">
@@ -190,18 +190,18 @@ const LandingPage: React.FC = () => {
         </section>
 
         {/* CTA Section */}
-        <section className="py-24">
-          <div className="container text-center space-y-8">
+        <section className="py-16 sm:py-20 lg:py-24">
+          <div className="container text-center space-y-6 sm:space-y-8">
             <div className="space-y-4">
-              <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
+              <h2 className="text-2xl sm:text-4xl md:text-5xl font-bold tracking-tighter">
                 Ready to Transform Your Healthcare Experience?
               </h2>
-              <p className="max-w-[600px] mx-auto text-muted-foreground md:text-xl">
+              <p className="max-w-[600px] mx-auto text-muted-foreground text-base sm:text-lg md:text-xl">
                 Join thousands of users who trust TelMed for their healthcare needs. 
                 Start your journey to better health today.
               </p>
             </div>
-            <div className="flex flex-col gap-4 sm:flex-row sm:justify-center">
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
               <Button size="lg" asChild>
                 <Link to="/register">Create Account</Link>
               </Button>

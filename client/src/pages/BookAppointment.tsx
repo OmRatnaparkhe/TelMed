@@ -84,7 +84,7 @@ const BookAppointment: React.FC = () => {
   };
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <div className="text-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
         <p className="text-gray-600 text-lg">Loading available doctors...</p>
@@ -93,11 +93,11 @@ const BookAppointment: React.FC = () => {
   );
 
   if (success) return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100">
-      <div className="text-center bg-white p-8 rounded-lg shadow-lg max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100 p-4">
+      <div className="text-center bg-white p-6 sm:p-8 rounded-lg shadow-lg max-w-md w-full">
         <div className="text-green-500 text-6xl mb-4">✅</div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Appointment Booked!</h2>
-        <p className="text-gray-600 mb-6">Your appointment has been successfully booked. You will be redirected to your dashboard shortly.</p>
+        <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3 sm:mb-4">Appointment Booked!</h2>
+        <p className="text-gray-600 mb-4 sm:mb-6">Your appointment has been successfully booked. You will be redirected to your dashboard shortly.</p>
         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600 mx-auto"></div>
       </div>
     </div>
@@ -129,8 +129,8 @@ const BookAppointment: React.FC = () => {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
           {/* Main Form */}
           <div className="lg:col-span-2">
             <div className="bg-white rounded-xl shadow-sm border border-gray-200">
@@ -138,7 +138,7 @@ const BookAppointment: React.FC = () => {
                 <h2 className="text-xl font-bold text-gray-900">Appointment Details</h2>
                 <p className="text-gray-600 mt-1">Fill in the details below to book your appointment</p>
               </div>
-              <div className="p-6">
+              <div className="p-4 sm:p-6">
                 {error && (
                   <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
                     <div className="flex">
@@ -234,7 +234,7 @@ const BookAppointment: React.FC = () => {
                   </div>
 
                   {/* Submit Button */}
-                  <div className="pt-4">
+                  <div className="pt-2 sm:pt-4">
                     <button
                       type="submit"
                       disabled={submitting}

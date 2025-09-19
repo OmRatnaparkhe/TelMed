@@ -53,17 +53,17 @@ const RegisterPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4 sm:p-6">
       <div className="w-full max-w-2xl">
         <Card className="shadow-xl border-0">
-          <CardHeader className="text-center pb-8">
+          <CardHeader className="text-center pb-6 sm:pb-8">
             <div className="flex justify-center mb-4">
               <div className="bg-blue-600 p-3 rounded-full">
                 <Heart className="h-8 w-8 text-white" />
               </div>
             </div>
-            <CardTitle className="text-3xl font-bold text-gray-900">Join TelMed</CardTitle>
-            <CardDescription className="text-lg text-gray-600">
+            <CardTitle className="text-2xl sm:text-3xl font-bold text-gray-900">Join TelMed</CardTitle>
+            <CardDescription className="text-base sm:text-lg text-gray-600">
               Create your account to access healthcare services
             </CardDescription>
           </CardHeader>
