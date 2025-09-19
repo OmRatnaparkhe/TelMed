@@ -82,7 +82,7 @@ const LocationSetup: React.FC = () => {
         const token = localStorage.getItem('token');
         if (!token) return;
 
-        const response = await fetch('http://localhost:4000/api/pharmacy/location', {
+        const response = await fetch('https://telmed-3.onrender.com/api/pharmacy/location', {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
@@ -258,7 +258,7 @@ const LocationSetup: React.FC = () => {
         return;
       }
 
-      const response = await fetch('http://localhost:4000/api/pharmacy/location', {
+      const response = await fetch('https://telmed-3.onrender.com/api/pharmacy/location', {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

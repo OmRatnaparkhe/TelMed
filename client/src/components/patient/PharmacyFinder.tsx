@@ -83,7 +83,7 @@ const PharmacyFinder: React.FC = () => {
       setIsLoading(true);
       setError(null);
 
-      const url = new URL('http://localhost:4000/api/pharmacies/for-patients');
+      const url = new URL('https://telmed-3.onrender.com/api/pharmacies/for-patients');
       if (userLocation) {
         url.searchParams.append('latitude', userLocation.lat.toString());
         url.searchParams.append('longitude', userLocation.lng.toString());

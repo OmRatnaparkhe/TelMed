@@ -86,7 +86,7 @@ const ProfileManagement: React.FC = () => {
       // Try to fetch from API
       const token = localStorage.getItem('token');
       if (token) {
-        const response = await fetch('/api/auth/profile', {
+        const response = await fetch('https://telmed-3.onrender.com/api/auth/profile', {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
@@ -159,7 +159,7 @@ const ProfileManagement: React.FC = () => {
       // Try to update via API
       const token = localStorage.getItem('token');
       if (token) {
-        await fetch('/api/auth/profile', {
+        await fetch('https://telmed-3.onrender.com/api/auth/profile', {
           method: 'PUT',
           headers: {
             'Authorization': `Bearer ${token}`,
