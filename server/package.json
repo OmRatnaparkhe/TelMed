@@ -7,7 +7,6 @@
   "engines": {
     "node": "20.x"
   },
-  
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc ",
@@ -15,11 +14,10 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "tsx prisma/seed.ts",
-    "postinstall": "prisma generate"
+    "postinstall": "npx prisma generate"
   },
-  
   "dependencies": {
-    "@prisma/client": "^6.16.0",
+    "@prisma/client": "^6.16.2",
     "@types/bcrypt": "^6.0.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.10",
@@ -30,7 +28,7 @@
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
     "nodemon": "^3.1.10",
-    "prisma": "^6.16.0",
+    "prisma": "^6.16.2",
     "process": "^0.11.10"
   },
   "devDependencies": {
