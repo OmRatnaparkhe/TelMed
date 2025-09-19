@@ -1,7 +1,7 @@
 generator client {
   provider      = "prisma-client-js"
   // Use native to compile the correct binary for the deploy platform (e.g., Linux on Render)
-  binaryTargets = ["native"]
+  binaryTargets = ["windows", "native", "debian-openssl-3.0.x"]
   engineType    = "binary"
 }
 
