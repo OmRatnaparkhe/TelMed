@@ -17,12 +17,14 @@ const app = express();
 
 app.use(express.json());
 
+
+
 // Configure CORS: allow configured origins (comma-separated) or reflect request origin in dev/prod
 const corsOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(",").map(o => o.trim()).filter(Boolean)
   : true; // true reflects the request origin in the CORS header
 
-app.use(
+app.use("*",
   cors({
     origin: corsOrigins,
     credentials: true,
