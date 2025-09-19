@@ -4,13 +4,15 @@
   "private": true,
   "type": "module",
   "main": "dist/index.js",
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc",
+    "build": "npm run prisma:generate && tsc",
     "start": "node dist/index.js",
-    "prisma:generate": "npx prisma generate",
-    "prisma:seed": "tsx prisma/seed.ts",
-    "postinstall": "npx prisma generate"
+    "prisma:generate": "npx -y prisma@6.16.0 generate",
+    "prisma:seed": "tsx prisma/seed.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
