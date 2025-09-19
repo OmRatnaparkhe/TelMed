@@ -13,6 +13,8 @@ export const getAvailableDoctors = async (req: AuthRequest, res: Response) => {
     const availableDoctors = await prisma.doctorProfile.findMany({
       where: {
         isAvailable: true,
+        // Ensure only true doctors are returned
+        user: { role: Role.DOCTOR },
       },
       include: {
         user: {

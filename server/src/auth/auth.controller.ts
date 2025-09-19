@@ -71,18 +71,14 @@ export const register = async (req: Request, res: Response) => {
         },
       });
     } else if (safeRole === Role.PHARMACIST) {
-      // NOTE: Schema uses DoctorProfile for pharmacist relationship (Pharmacy.pharmacist -> DoctorProfile)
-      // 1) Create a DoctorProfile entry for the pharmacist
-      const pharmacistProfile = await prisma.doctorProfile.create({
+      // Create PharmacistProfile and link a default Pharmacy to it
+      const pharmacistProfile = await prisma.pharmacistProfile.create({
         data: {
           userId: user.id,
-          specialization: specialization || 'Pharmacist',
-          qualifications: qualifications || 'Pharmacy',
-          experienceYears: parseInt(experienceYears || '0'),
         },
       });
 
-      // 2) Auto-create a Pharmacy and assign to this pharmacist to avoid unassigned errors
+      // Auto-create a Pharmacy and assign to this pharmacist to avoid unassigned errors
       const pharmacyName = `${firstName ?? 'New'} ${lastName ?? 'Pharmacist'} Pharmacy`;
       await prisma.pharmacy.create({
         data: {
