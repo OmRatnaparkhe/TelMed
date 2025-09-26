@@ -115,21 +115,19 @@ const LoginPage: React.FC = () => {
 
         {/* Demo Credentials */}
         <Card className="mt-4">
-          <CardHeader className="pb-3">
+          <CardHeader className="pb-1">
             <CardTitle className="text-sm">Demo Credentials</CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
               <div className="space-y-1">
                 <p className="font-medium">Patient:</p>
-                <p className="text-muted-foreground">patient@demo.com</p>
+                <p className="text-muted-foreground">Email : demo@gmail.com</p>
+                <p className="text-xs text-muted-foreground mt-2">Password: demo123</p>
               </div>
-              <div className="space-y-1">
-                <p className="font-medium">Doctor:</p>
-                <p className="text-muted-foreground">doctor@demo.com</p>
-              </div>
+             
             </div>
-            <p className="text-xs text-muted-foreground mt-2">Password: demo123</p>
+            
           </CardContent>
         </Card>
       </div>
